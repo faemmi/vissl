@@ -23,8 +23,6 @@ from vissl.config import AttrDict
 from vissl.utils.misc import get_indices_sparse
 import vissl.utils.mantik as mantik
 
-LOG_TO_MANTIK = True if os.getenv("LOG_TO_MANTIK") == "True" else False
-
 torch.cuda.empty_cache()
 
 device = torch.device(f"cuda:{get_rank()}" if torch.cuda.is_available() else 'cpu')
@@ -322,8 +320,7 @@ class DeepClusterV2Loss(ClassyLoss):
                 self.indexes.unique(),
             )
 
-            #if LOG_TO_MANTIK:
-            if True:
+            if mantik.tracking_enabled():
                 epoch = mantik.get_current_epoch()
                 epoch_comp = epoch + 1
 
