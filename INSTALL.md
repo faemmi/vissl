@@ -104,15 +104,11 @@ Follow [step4 instructions from the PIP installation](#step-4-install-vissl)
 git clone https://github.com/facebookresearch/vissl.git
 cd vissl
 pip install torch==1.9.1 torchvision==0.10.1 --index-url https://download.pytorch.org/whl/cpu
-it fetch upstream
-git checkout v0.1.6
-git checkout -b v0.1.6
 pip install --progress-bar off -r requirements.txt
 pip install opencv-python
 pip install -e ".[dev]"
 pip uninstall -y classy_vision fairscale numpy
 pip install classy-vision@https://github.com/facebookresearch/ClassyVision/tarball/4785d5ee19d3bcedd5b28c1eb51ea1f59188b54d fairscale==0.4.6 n        numpy==1.21.0
-pip install mantik
 ```
 
 ## Installing VISSL from pre-built binaries
