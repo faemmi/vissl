@@ -531,12 +531,8 @@ class LogPerfTimeMetricsHook(ClassyHook):
         self.start_time = time.time()
         task.perf_stats = PerfStats()
 
-        epoch = task.train_phase_idx
-        log_freq = task.config["LOG_FREQUENCY"]
-
         # Set current epoch as env var.
-        os.environ["CURRENT_EPOCH"] = str(epoch)
-        os.environ["LOG_FREQUENCY"] = str(log_freq)
+        mantik.set_current_epoch(task.train_phase_idx)
 
     #def on_loss_and_meter(self, task: "tasks.ClassyTask") -> None:
     #    """
@@ -563,7 +559,6 @@ class LogPerfTimeMetricsHook(ClassyHook):
         phase_type = task.phase_type
         batches = len(task.losses)
         epoch = task.train_phase_idx
-        log_freq = task.config["LOG_FREQUENCY"]
 
         if self.start_time is None:
             logging.warning("start_time not initialized")

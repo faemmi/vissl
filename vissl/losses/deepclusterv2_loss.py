@@ -21,8 +21,9 @@ from classy_vision.losses import ClassyLoss, register_loss
 from torch import nn
 from vissl.config import AttrDict
 from vissl.utils.misc import get_indices_sparse
-from vissl.utils.io import save_file
 import vissl.utils.mantik as mantik
+
+LOG_TO_MANTIK = True if os.getenv("LOG_TO_MANTIK") == "True" else False
 
 torch.cuda.empty_cache()
 
@@ -93,13 +94,8 @@ class DeepClusterV2Loss(ClassyLoss):
             "indexes", -100 * torch.ones(self.nmb_heads, size_dataset).long()
         )
 
-        randoms = (
-            torch.rand(self.nmb_heads, size_dataset).half() 
-            if torch.cuda.is_available() 
-            else torch.rand(self.nmb_heads, size_dataset).float()
-        )
         self.register_buffer(
-            "distance", -100 * randoms
+            "distance", -100 * torch.rand(self.nmb_heads, size_dataset).float()
         )
 
 
@@ -136,7 +132,10 @@ class DeepClusterV2Loss(ClassyLoss):
     def init_memory(self, dataloader, model):
         logging.info(f"Rank: {get_rank()}, Start initializing memory banks")
         start_idx = 0
+        #import torch.multiprocessing
+        #torch.multiprocessing.set_sharing_strategy('file_system')
         with torch.no_grad():
+
             for inputs in dataloader:
                 nmb_unique_idx = len(inputs["data_idx"][0]) // self.num_crops
                 index = inputs["data_idx"][0][:nmb_unique_idx].to(device=device, non_blocking=True)
@@ -323,8 +322,9 @@ class DeepClusterV2Loss(ClassyLoss):
                 self.indexes.unique(),
             )
 
-            if mantik.tracking_enabled():
-                epoch = _get_required_env_var("CURRENT_EPOCH")
+            #if LOG_TO_MANTIK:
+            if True:
+                epoch = mantik.get_current_epoch()
                 epoch_comp = epoch + 1
 
                 if epoch_comp == 1 or (epoch_comp <= 100 and epoch_comp % 5 == 0) or epoch_comp % 100 == 0:
@@ -347,10 +347,3 @@ class DeepClusterV2Loss(ClassyLoss):
 
     def _create_path(self, file_name: str, epoch: int) -> str:
         return f"{self.loss_config.output_dir}/epoch-{epoch}-{file_name}"
-
-
-def _get_required_env_var(name: str) -> int:
-    value = os.getenv(name)
-    if value is None:
-        raise RuntimeError(f"Environment variable {name} unset")
-    return int(value)
