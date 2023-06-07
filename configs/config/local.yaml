@@ -18,7 +18,7 @@ config:
       LOG_PARAMS: True
       LOG_PARAMS_EVERY_N_ITERS: -1
   DATA:
-    NUM_DATALOADER_WORKERS: 8   # Set this depending on the number of CPUs you have
+    NUM_DATALOADER_WORKERS: 0   # Set this depending on the number of CPUs you have
     TRAIN:
       DATA_SOURCES: [disk_folder] # can be user specified
       DATASET_NAMES: [local_test_dataset]
