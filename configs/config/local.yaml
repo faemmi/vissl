@@ -22,7 +22,7 @@ config:
     TRAIN:
       DATA_SOURCES: [disk_folder] # can be user specified
       DATASET_NAMES: [local_test_dataset]
-      BATCHSIZE_PER_REPLICA: 4  # number of unique samples in minibatch per gpu
+      BATCHSIZE_PER_REPLICA: 64  # number of unique samples in minibatch per gpu
       LABEL_TYPE: sample_index    # just an implementation detail. Label isn't used
       TRANSFORMS:                 # https://vissl.readthedocs.io/en/latest/api/data.html
         - name: ImgPilToMultiCrop
@@ -77,7 +77,7 @@ config:
     name: deepclusterv2_loss
     deepclusterv2_loss:
       num_train_samples: 128
-      BATCHSIZE_PER_REPLICA: 32
+      BATCHSIZE_PER_REPLICA: 64
       num_crops: 2
       temperature: 0.1
       #num_clusters: [3000, 3000, 3000]

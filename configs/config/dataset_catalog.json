@@ -1,8 +1,13 @@
 {
   "local_test_dataset":
   {
-    "train": ["/data", ""],
-    "val": ["/data", ""]
+    "train": ["/home/fabian/data/daily", ""],
+    "val": ["/home/fabian/data/daily", ""]
+  },
+  "local_test_dataset_full":
+  {
+    "train": ["/home/fabian/data/hourly", ""],
+    "val": ["/home/fabian/data/hourly", ""]
   },
   "remote_test_dataset":
   {
