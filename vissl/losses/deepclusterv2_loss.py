@@ -4,8 +4,10 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
+
 import math
 import pprint
+import os
 
 import torch
 import torch.distributed as dist
@@ -14,12 +16,19 @@ from classy_vision.generic.distributed_util import (
     gather_from_all,
     get_rank,
     get_world_size,
+    get_cuda_device_index
 )
 from classy_vision.losses import ClassyLoss, register_loss
 from torch import nn
 from vissl.config import AttrDict
 from vissl.utils.misc import get_indices_sparse
+from vissl.utils.io import save_file
 
+LOG_TO_MANTIK = True if os.getenv("LOG_TO_MANTIK") == "True" else False
+
+torch.cuda.empty_cache()
+
+device = torch.device(f"cuda:{get_cuda_device_index}" if torch.cuda.is_available() else 'cpu')
 
 @register_loss("deepclusterv2_loss")
 class DeepClusterV2Loss(ClassyLoss):
@@ -45,6 +54,7 @@ class DeepClusterV2Loss(ClassyLoss):
 
         self.loss_config = loss_config
         size_dataset = self.loss_config.num_train_samples
+
         size_memory_per_process = int(math.ceil(size_dataset * 1.0 / get_world_size()))
 
         if self.loss_config.DROP_LAST:
@@ -80,6 +90,17 @@ class DeepClusterV2Loss(ClassyLoss):
 
         self.cross_entropy_loss = nn.CrossEntropyLoss(ignore_index=-100)
 
+        # Note (fabian.emmerich): Added extras
+        self.register_buffer(
+            "indexes", -100 * torch.ones(self.nmb_heads, size_dataset).long()
+        )
+
+        self.register_buffer(
+            "distance", -100 * torch.rand(self.nmb_heads, size_dataset).half()
+        )
+
+
+
     @classmethod
     def from_config(cls, loss_config: AttrDict):
         """
@@ -94,10 +115,11 @@ class DeepClusterV2Loss(ClassyLoss):
         return cls(loss_config)
 
     def forward(self, output: torch.Tensor, idx: int):
+        logging.info("Rank: %s, Forwarding for index %s", get_rank(), idx)
         output = nn.functional.normalize(output, dim=1, p=2)
-
         loss = 0
         for i in range(self.nmb_heads):
+
             scores = (
                 torch.mm(output, getattr(self, "centroids" + str(i)).t())
                 / self.temperature
@@ -106,21 +128,21 @@ class DeepClusterV2Loss(ClassyLoss):
         loss /= self.nmb_heads
 
         self.update_memory_bank(output, idx)
-
         return loss
 
     def init_memory(self, dataloader, model):
         logging.info(f"Rank: {get_rank()}, Start initializing memory banks")
         start_idx = 0
         with torch.no_grad():
+            breakpoint()
+
             for inputs in dataloader:
                 nmb_unique_idx = len(inputs["data_idx"][0]) // self.num_crops
-                index = inputs["data_idx"][0][:nmb_unique_idx].cuda(non_blocking=True)
-
+                index = inputs["data_idx"][0][:nmb_unique_idx].to(device=device, non_blocking=True)
                 # get embeddings
                 outputs = []
                 for crop_idx in self.crops_for_mb:
-                    inp = inputs["data"][0][crop_idx].cuda(non_blocking=True)
+                    inp = inputs["data"][0][crop_idx].to(device=device, non_blocking=True)
                     outputs.append(nn.functional.normalize(model(inp)[0], dim=1, p=2))
 
                 # fill the memory bank
@@ -131,19 +153,34 @@ class DeepClusterV2Loss(ClassyLoss):
                     ] = embeddings
                 start_idx += nmb_unique_idx
         logging.info(
-            f"Rank: {get_rank()}, Memory banks initialized: "
-            "full first forward pass done"
+            f"Rank: {get_rank()}, Memory banks initialized, "
+            "full first forward pass done: \n%s (shape=%s, unique=%s)",
+            self.local_memory_index,
+            self.local_memory_index.shape,
+            self.local_memory_index.unique()
         )
 
     def update_memory_bank(self, emb, idx):
+        logging.info("Rank: %s, Updating memory bank for index %s (start_index=%s)", get_rank(), idx, self.start_idx)
         nmb_unique_idx = len(idx) // self.num_crops
+        logging.info("Rank: %s, nmb_unique_idx=%s (num_crops=%s)", get_rank(), nmb_unique_idx, self.num_crops)
         idx = idx[:nmb_unique_idx]
+        logging.info("Rank: %s, Calculated new index %s (num_crops=%s)", get_rank(), idx, self.num_crops)
+        logging.info("Rank: %s, Settings %s to %s", get_rank(), self.local_memory_index[self.start_idx : self.start_idx + nmb_unique_idx], idx)
         self.local_memory_index[self.start_idx : self.start_idx + nmb_unique_idx] = idx
+        logging.info("Rank: %s, Done, result=%s", get_rank(), self.local_memory_index[self.start_idx : self.start_idx + nmb_unique_idx])
         for i, crop_idx in enumerate(self.crops_for_mb):
             self.local_memory_embeddings[i][
                 self.start_idx : self.start_idx + nmb_unique_idx
             ] = emb[crop_idx * nmb_unique_idx : (crop_idx + 1) * nmb_unique_idx]
         self.start_idx += nmb_unique_idx
+        logging.info(
+            f"Rank: {get_rank()}, Updated memory banks, "
+            "full first forward pass done: %s (shape=%s, unique=%s)",
+            self.local_memory_index,
+            self.local_memory_index.shape,
+            self.local_memory_index.unique()
+        )
 
     def cluster_memory(self):
         self.start_idx = 0
@@ -153,11 +190,12 @@ class DeepClusterV2Loss(ClassyLoss):
                 # run distributed k-means
 
                 # init centroids with elements from memory bank of rank 0
-                centroids = torch.empty(K, self.embedding_dim).cuda(non_blocking=True)
+                centroids = torch.empty(K, self.embedding_dim).to(device=device, non_blocking=True)
                 if get_rank() == 0:
                     random_idx = torch.randperm(len(self.local_memory_embeddings[j]))[
                         :K
                     ]
+
                     assert len(random_idx) >= K, "please reduce the number of centroids"
                     centroids = self.local_memory_embeddings[j][random_idx]
                 dist.broadcast(centroids, 0)
@@ -168,16 +206,16 @@ class DeepClusterV2Loss(ClassyLoss):
                     dot_products = torch.mm(
                         self.local_memory_embeddings[j], centroids.t()
                     )
-                    _, assignments = dot_products.max(dim=1)
+                    distance, assignments = dot_products.max(dim=1)
 
                     # finish
                     if n_iter == self.nmb_kmeans_iters:
                         break
-
                     # M step
                     where_helper = get_indices_sparse(assignments.cpu().numpy())
-                    counts = torch.zeros(K).cuda(non_blocking=True).int()
-                    emb_sums = torch.zeros(K, self.embedding_dim).cuda(
+                    counts = torch.zeros(K).to(device=device, non_blocking=True).int()
+                    emb_sums = torch.zeros(K, self.embedding_dim).to(
+                        device=device,
                         non_blocking=True
                     )
                     for k in range(len(where_helper)):
@@ -187,7 +225,9 @@ class DeepClusterV2Loss(ClassyLoss):
                                 dim=0,
                             )
                             counts[k] = len(where_helper[k][0])
-                    all_reduce_sum(counts)
+
+
+                    all_reduce_sum(counts) #performing sum reduction of tensor over all processes
                     mask = counts > 0
                     all_reduce_sum(emb_sums)
                     centroids[mask] = emb_sums[mask] / counts[mask].unsqueeze(1)
@@ -196,16 +236,120 @@ class DeepClusterV2Loss(ClassyLoss):
                     centroids = nn.functional.normalize(centroids, dim=1, p=2)
 
                 getattr(self, "centroids" + str(i_K)).copy_(centroids)
+
+                logging.info(
+                    "Clustering result (rank=%s):\n"
+                    "assignments=%s (shape=%s, unique values=%s),\n "
+                    "distances=%s (shape=%s, unique values=%s),\n"
+                    "indexes=%s (shape=%s, unique values=%s)",
+                    get_rank(),
+                    assignments,
+                    assignments.shape,
+                    assignments.unique(),
+                    distance,
+                    distance.shape,
+                    distance.unique(),
+                    self.local_memory_index,
+                    self.local_memory_index.shape,
+                    self.local_memory_index.unique(),
+                )
+
                 # gather the assignments
                 assignments_all = gather_from_all(assignments)
                 indexes_all = gather_from_all(self.local_memory_index)
+                distance_all = gather_from_all(distance)
+
+                logging.info(
+                    "Clustering result (rank=%s) after gathering from all ranks:\n"
+                    "assignments=%s (shape=%s, unique values=%s),\n "
+                    "distances=%s (shape=%s, unique values=%s),\n"
+                    "indexes=%s (shape=%s, unique values=%s)",
+                    get_rank(),
+                    assignments_all,
+                    assignments_all.shape,
+                    assignments_all.unique(),
+                    distance_all,
+                    distance_all.shape,
+                    distance_all.unique(),
+                    indexes_all,
+                    indexes_all.shape,
+                    indexes_all.unique(),
+                )
+
                 self.assignments[i_K] = -100
                 self.assignments[i_K][indexes_all] = assignments_all
 
+                self.indexes[i_K] = -100
+                self.indexes[i_K][indexes_all] = indexes_all
+
+                self.distance[i_K] = -100
+                self.distance[i_K][indexes_all] = distance_all
+
+                logging.info(
+                    "Clustering result (rank=%s) after K-means iteration %s:\n"
+                    "assignments=%s (shape=%s, unique values=%s),\n "
+                    "distances=%s (shape=%s, unique values=%s),\n"
+                    "indexes=%s (shape=%s, unique values=%s)",
+                    get_rank(),
+                    n_iter,
+                    self.assignments,
+                    self.assignments.shape,
+                    self.assignments.unique(),
+                    self.distance,
+                    self.distance.shape,
+                    self.distance.unique(),
+                    self.indexes,
+                    self.indexes.shape,
+                    self.indexes.unique(),
+                )
+
                 j = (j + 1) % self.nmb_mbs
+
+            logging.info(
+                "Final clustering result on rank %s:\n"
+                "assignments=%s (shape=%s, unique values=%s),\n "
+                "distances=%s (shape=%s, unique values=%s),\n"
+                "indexes=%s (shape=%s, unique values=%s)",
+                get_rank(),
+                self.assignments,
+                self.assignments.shape,
+                self.assignments.unique(),
+                self.distance,
+                self.distance.shape,
+                self.distance.unique(),
+                self.indexes,
+                self.indexes.shape,
+                self.indexes.unique(),
+            )
+
+            if LOG_TO_MANTIK:
+                epoch = _get_required_env_var("CURRENT_EPOCH")
+                epoch_comp = epoch + 1
+
+                if epoch_comp == 1 or (epoch_comp <= 100 and epoch_comp % 5 == 0) or epoch_comp % 100 == 0:
+                    logging.info("Saving clustering data on rank %s at epoch %s", get_rank(), epoch)
+
+                    centroids_last_iter = getattr(self, f"centroids{len(self.num_clusters) - 1}")
+
+                    logging.info("Saving clustering information to disk")
+
+                    torch.save(centroids_last_iter, self._create_path("centroids.pt", epoch=epoch))
+                    torch.save(self.assignments, self._create_path("assignments.pt", epoch=epoch))
+                    torch.save(self.indexes, self._create_path("indexes.pt", epoch=epoch))
+                    torch.save(self.distance, self._create_path("distances.pt", epoch=epoch))
 
         logging.info(f"Rank: {get_rank()}, clustering of the memory bank done")
 
     def __repr__(self):
         repr_dict = {"name": self._get_name()}
         return pprint.pformat(repr_dict, indent=2)
+
+    def _create_path(self, file_name: str, epoch: int) -> str:
+        return f"{self.loss_config.output_dir}/epoch-{epoch}-{file_name}"
+
+
+def _get_required_env_var(name: str) -> int:
+    value = os.getenv(name)
+    if value is None:
+        raise RuntimeError(f"Environment variable {name} unset")
+    return int(value)

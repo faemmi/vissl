@@ -10,12 +10,12 @@ from typing import List
 import torch
 import torch.nn as nn
 import torchvision.models as models
-from torchvision.models.resnet import Bottleneck
+from torchvision.models.resnet import BasicBlock, Bottleneck
 from vissl.config import AttrDict
 from vissl.data.collators.collator_helper import MultiDimensionalTensor
 from vissl.models.model_helpers import (
-    Flatten,
     _get_norm,
+    Flatten,
     get_trunk_forward_outputs,
     get_tunk_forward_interpolated_outputs,
     transform_model_input_data_type,
@@ -25,14 +25,18 @@ from vissl.models.trunks import register_model_trunk
 
 # For more depths, add the block config here
 BLOCK_CONFIG = {
-    50: (3, 4, 6, 3),
-    101: (3, 4, 23, 3),
-    152: (3, 8, 36, 3),
-    200: (3, 24, 36, 3),
+    18: {"layers": (2, 2, 2, 2), "block": BasicBlock},
+    34: {"layers": (3, 4, 6, 3), "block": BasicBlock},
+    50: {"layers": (3, 4, 6, 3), "block": Bottleneck},
+    101: {"layers": (3, 4, 23, 3), "block": Bottleneck},
+    152: {"layers": (3, 8, 36, 3), "block": Bottleneck},
+    200: {"layers": (3, 24, 36, 3), "block": Bottleneck},
 }
 
 
 class SUPPORTED_DEPTHS(int, Enum):
+    RN18 = 18
+    RN34 = 34
     RN50 = 50
     RN101 = 101
     RN152 = 152
@@ -83,7 +87,9 @@ class ResNeXt(nn.Module):
             self.model_config.ACTIVATION_CHECKPOINTING.NUM_ACTIVATION_CHECKPOINTING_SPLITS
         )
 
-        (n1, n2, n3, n4) = BLOCK_CONFIG[self.depth]
+        (n1, n2, n3, n4) = BLOCK_CONFIG[self.depth]["layers"]
+        block_constructor = BLOCK_CONFIG[self.depth]["block"]
+
         logging.info(
             f"Building model: ResNeXt"
             f"{self.depth}-{self.groups}x{self.width_per_group}d-"
@@ -91,8 +97,8 @@ class ResNeXt(nn.Module):
         )
 
         model = models.resnet.ResNet(
-            block=Bottleneck,
-            layers=(n1, n2, n3, n4),
+            block=block_constructor,
+            layers=[n1, n2, n3, n4],
             zero_init_residual=self.zero_init_residual,
             groups=self.groups,
             width_per_group=self.width_per_group,
@@ -104,7 +110,20 @@ class ResNeXt(nn.Module):
         # some tasks like Colorization https://arxiv.org/abs/1603.08511 take input
         # as L channel of an LAB image. In that case we change the input channel
         # and re-construct the conv1
-        self.input_channels = INPUT_CHANNEL[self.model_config.INPUT_TYPE]
+
+        # Allow arbitrary number of inputs for integer values
+        input_type = self.model_config.INPUT_TYPE
+        try:
+            self.input_channels = INPUT_CHANNEL[input_type]
+        except KeyError:
+            try:
+                self.input_channels = int(input_type)
+            except ValueError as e:
+                allowed_values = ", ".join(f"'{e.name}'" for e in INPUT_CHANNEL)
+                raise ValueError(
+                    f"Invalid value for config.MODEL.INPUT_TYPE ({input_type}), "
+                    f"int, {allowed_values}"
+                )
 
         model_conv1 = nn.Conv2d(
             self.input_channels,
@@ -118,9 +137,9 @@ class ResNeXt(nn.Module):
         model_relu1 = model.relu
         model_maxpool = model.maxpool
         model_avgpool = model.avgpool
-        model_layer1 = model._make_layer(Bottleneck, dim_inner, n1)
-        model_layer2 = model._make_layer(Bottleneck, dim_inner * 2, n2, stride=2)
-        model_layer3 = model._make_layer(Bottleneck, dim_inner * 4, n3, stride=2)
+        model_layer1 = model._make_layer(block_constructor, dim_inner, n1)
+        model_layer2 = model._make_layer(block_constructor, dim_inner * 2, n2, stride=2)
+        model_layer3 = model._make_layer(block_constructor, dim_inner * 4, n3, stride=2)
 
         # For some models like Colorization https://arxiv.org/abs/1603.08511,
         # due to the higher spatial resolution desired for pixel wise task, we
@@ -128,7 +147,7 @@ class ResNeXt(nn.Module):
         # behavior so support only those.
         safe_stride = SUPPORTED_L4_STRIDE(self.trunk_config.LAYER4_STRIDE)
         model_layer4 = model._make_layer(
-            Bottleneck, dim_inner * 8, n4, stride=safe_stride
+            block_constructor, dim_inner * 8, n4, stride=safe_stride
         )
 
         # we mapped the layers of resnet model into feature blocks to facilitate

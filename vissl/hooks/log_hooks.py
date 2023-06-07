@@ -1,8 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates.
-
 # This source code is licensed under the MIT license found in the
 # LICENSE file in the root directory of this source tree.
-
 """
 All the hooks involved in human-readable logging
 """
@@ -12,8 +10,11 @@ import datetime
 import json
 import logging
 import time
+import os
 from typing import Optional
 
+import mlflow
+import numpy as np
 import torch
 from classy_vision import tasks
 from classy_vision.generic.distributed_util import get_rank, is_primary
@@ -25,6 +26,8 @@ from vissl.utils.env import get_machine_local_and_dist_rank
 from vissl.utils.io import save_file
 from vissl.utils.logger import log_gpu_stats
 from vissl.utils.perf_stats import PerfStats
+
+LOG_TO_MANTIK = True if os.getenv("LOG_TO_MANTIK") == "True" else False
 
 
 class LogGpuMemoryHook(ClassyHook):
@@ -69,9 +72,9 @@ class LogGpuMemoryHook(ClassyHook):
 
     def _print_memory_summary(self, task: "tasks.ClassyTask", stage_name: str) -> None:
         if (
-            is_primary()
-            and (task.device.type == "cuda")
-            and task.local_iteration_num == self.log_iteration_num
+                is_primary()
+                and (task.device.type == "cuda")
+                and task.local_iteration_num == self.log_iteration_num
         ):
             logging.info(
                 f"========= Memory Summary at {stage_name} ======="
@@ -116,7 +119,7 @@ class DumpMemoryOnException(ClassyHook):
     @staticmethod
     def _is_pytorch(obj):
         return torch.is_tensor(obj) or (
-            hasattr(obj, "data") and torch.is_tensor(obj.data)
+                hasattr(obj, "data") and torch.is_tensor(obj.data)
         )
 
 
@@ -149,9 +152,9 @@ class LogGpuStatsHook(ClassyHook):
         useful for monitoring memory usage.
         """
         if (
-            is_primary()
-            and (task.device.type == "cuda")
-            and task.local_iteration_num == 50
+                is_primary()
+                and (task.device.type == "cuda")
+                and task.local_iteration_num == 50
         ):
             log_gpu_stats()
 
@@ -172,7 +175,7 @@ class LogLossLrEtaHook(ClassyHook):
     on_loss_and_meter = ClassyHook._noop
 
     def __init__(
-        self, checkpoint_folder: str, btime_freq: Optional[int] = None
+            self, checkpoint_folder: str, btime_freq: Optional[int] = None
     ) -> None:
         """
         Args:
@@ -196,11 +199,9 @@ class LogLossLrEtaHook(ClassyHook):
         Executed after after parameter update. If the current phase is training,
         and it's a logging iteration, we compute and log several helpul training
         stats to keep track of ongoing training.
-
         For monitoring the batch size (average training iteration time), we allow
         monitoring the stats (optionally) for every N iterations to get better
         idea about the batch time and training eta.
-
         Set the btime_freq input using cfg.HOOKS.PERF_STATS.PERF_STAT_FREQUENCY=N
         ensuring that cfg.HOOKS.PERF_STATS.MONITOR_PERF_STATS = True.
         """
@@ -216,9 +217,9 @@ class LogLossLrEtaHook(ClassyHook):
                 peak_mem_used = -1
 
             if (
-                (iteration == 1)
-                or (iteration % log_freq == 0)
-                or (iteration <= 100 and iteration % 5 == 0)
+                    (iteration == 1)
+                    or (iteration % log_freq == 0)
+                    or (iteration <= 100 and iteration % 5 == 0)
             ):
                 loss_val = round(task.last_batch.loss.data.cpu().item(), 5)
                 if len(task.batch_time) > 0:
@@ -237,11 +238,11 @@ class LogLossLrEtaHook(ClassyHook):
                 rank = get_rank()
                 log_data = {
                     "Rank": rank,
-                    "ep": train_phase_idx,
+                    "epoch": train_phase_idx,
                     "iter": iteration,
                     "lr": lr_val,
                     "loss": loss_val,
-                    "btime(ms)": batch_time,
+                    "batchtime(ms)": batch_time,
                     "eta": eta_string,
                     "peak_mem(M)": peak_mem_used,
                 }
@@ -252,7 +253,7 @@ class LogLossLrEtaHook(ClassyHook):
 
                 if self.btime_freq and len(batch_times) >= self.btime_freq:
                     rolling_avg_time = (
-                        sum(batch_times[-self.btime_freq :]) / self.btime_freq
+                            sum(batch_times[-self.btime_freq :]) / self.btime_freq
                     )
                     rolling_eta_secs = int(
                         rolling_avg_time * (task.max_iteration - iteration)
@@ -369,11 +370,11 @@ class LogLossMetricsCheckpointHook(ClassyHook):
         )
 
     def _checkpoint_model(
-        self,
-        task: "tasks.ClassyTask",
-        mode_frequency: int,
-        mode_num: int,
-        mode: str = "phase",
+            self,
+            task: "tasks.ClassyTask",
+            mode_frequency: int,
+            mode_num: int,
+            mode: str = "phase",
     ):
         """
         Checkpoint model. Can be called in 3 possible scenarios:
@@ -381,7 +382,6 @@ class LogLossMetricsCheckpointHook(ClassyHook):
         2. After every N epochs (CHECKPOINT_FREQ), model state is checkpointed.
         3. If user wants to checkpoint during the epoch (ie. after every few training
            iterations, the model state is checkpointed.)
-
         Args:
             task: Self-supervision task that hold information about training iteration,
                   epoch number etc.
@@ -402,9 +402,9 @@ class LogLossMetricsCheckpointHook(ClassyHook):
             mode_num, mode_frequency, train_phase_idx, num_train_phases, mode
         )
         is_final_train_phase = (
-            (train_phase_idx == (num_train_phases - 1))
-            and task.train
-            and mode == "phase"
+                (train_phase_idx == (num_train_phases - 1))
+                and task.train
+                and mode == "phase"
         )
 
         # handle checkpoint:
@@ -486,8 +486,8 @@ class LogLossMetricsCheckpointHook(ClassyHook):
         save_metrics["train_phase_idx"] = train_phase_idx
         for meter in task.meters:
             if len(task.meters) > 0 and (
-                (task.train and task.config["METERS"]["enable_training_meter"])
-                or (not task.train)
+                    (task.train and task.config["METERS"]["enable_training_meter"])
+                    or (not task.train)
             ):
                 meter_value = meter.value
                 metric_key = f"{phase_type}_{meter.name}"
@@ -532,15 +532,22 @@ class LogPerfTimeMetricsHook(ClassyHook):
         self.start_time = time.time()
         task.perf_stats = PerfStats()
 
-    def on_loss_and_meter(self, task: "tasks.ClassyTask") -> None:
-        """
-        Log performance metrics every log_freq batches, if log_freq is not None.
-        """
-        if self.log_freq is None:
-            return
-        batches = len(task.losses)
-        if batches and batches % self.log_freq == 0:
-            self._log_performance_metrics(task)
+        epoch = task.train_phase_idx
+        log_freq = task.config["LOG_FREQUENCY"]
+
+        # Set current epoch as env var.
+        os.environ["CURRENT_EPOCH"] = str(epoch)
+        os.environ["LOG_FREQUENCY"] = str(log_freq)
+
+    #def on_loss_and_meter(self, task: "tasks.ClassyTask") -> None:
+    #    """
+    #    Log performance metrics every log_freq batches, if log_freq is not None.
+    #    """
+    #    if self.log_freq is None:
+    #        return
+    #    batches = len(task.losses)
+    #    if batches and batches % self.log_freq == 0:
+    #        self._log_performance_metrics(task)
 
     def on_phase_end(self, task: "tasks.ClassyTask") -> None:
         """
@@ -556,24 +563,59 @@ class LogPerfTimeMetricsHook(ClassyHook):
         """
         phase_type = task.phase_type
         batches = len(task.losses)
+        epoch = task.train_phase_idx
+        log_freq = task.config["LOG_FREQUENCY"]
 
         if self.start_time is None:
             logging.warning("start_time not initialized")
         else:
             # Average batch time calculation
-            total_batch_time = time.time() - self.start_time
+            total_batch_time = (time.time() - self.start_time) * 1e3
             average_batch_time = total_batch_time / batches
             logging.info(
-                "Average %s batch time (ms) for %d batches: %d"
-                % (phase_type, batches, 1000.0 * average_batch_time)
+                "Average %s batch time (s) for %d batches: %d"
+                % (phase_type, batches, average_batch_time)
             )
+            logging.info(
+                "Total %s epoch time (s) for %d batches: %d"
+                % (phase_type, batches, total_batch_time)
+            )
+
+            if LOG_TO_MANTIK and get_rank() == 0:
+                #loss_val = round(task.last_batch.loss.data.cpu().item(), 5)
+                loss_val = np.mean(task.losses)
+                loss_val_std = np.std(task.losses)
+
+                if isinstance(task.optimizer.options_view.lr, (set, list)):
+                    lr_val = list(task.optimizer.options_view.lr)
+                else:
+                    lr_val = round(task.optimizer.options_view.lr, 5)
+
+                mlflow.log_metrics(
+                    {
+                        "rank": get_rank(),
+                        "phase_idx": task.phase_idx,
+                        "train_phase_idx": task.train_phase_idx,
+                        "epoch": epoch,
+                        "iteration": task.iteration,
+                        "iteration_num": task.local_iteration_num,
+                        "loss_mean": loss_val,
+                        "loss_std": loss_val_std,
+                        "learning_rate": lr_val,
+                        "batch_time_ms": total_batch_time,
+                        "batch_time_avg_ms": average_batch_time,
+                    },
+                    step=epoch,
+                )
 
         # Train step time breakdown
         if task.perf_stats is None:
             logging.warning('"perf_stats" not set in local_variables')
         elif task.train:
             logging.info(
-                "Train step time breakdown (rank {}):\n{}".format(
-                    get_rank(), task.perf_stats.report_str()
+                "Train step time breakdown ep {} (rank {}):\n{}".format(
+                    task.train_phase_idx,
+                    get_rank(),
+                    task.perf_stats.report_str(),
                 )
             )

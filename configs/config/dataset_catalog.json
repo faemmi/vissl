@@ -1,4 +1,8 @@
 {
+    "local_test_dataset": {
+        "train": ["/home/fabian/data/daily", "<unused>"],
+        "val": ["/home/fabian/data/daily", "<unused>"]
+    },
     "airstore_imagenet": {
         "train": ["airstore://flashblade_imagenet_train", "<unused>"],
         "val": ["airstore://flashblade_imagenet_val", "<unused>"]

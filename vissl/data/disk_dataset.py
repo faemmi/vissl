@@ -4,12 +4,20 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
+import os
+import time
 
-from iopath.common.file_io import g_pathmgr
+import mlflow
+
+from fvcore.common.file_io import PathManager
 from PIL import Image
 from torchvision.datasets import ImageFolder
 from vissl.data.data_helper import QueueDataset, get_mean_image
 from vissl.utils.io import load_file
+from vissl.utils.io import save_file
+from classy_vision.generic.distributed_util import get_rank
+
+LOG_TO_MANTIK = True if os.getenv("LOG_TO_MANTIK") == "True" else False
 
 
 class DiskImageDataset(QueueDataset):
@@ -54,9 +62,9 @@ class DiskImageDataset(QueueDataset):
             "disk_folder",
         ], "data_source must be either disk_filelist or disk_folder"
         if data_source == "disk_filelist":
-            assert g_pathmgr.isfile(path), f"File {path} does not exist"
+            assert PathManager.isfile(path), f"File {path} does not exist"
         elif data_source == "disk_folder":
-            assert g_pathmgr.isdir(path), f"Directory {path} does not exist"
+            assert PathManager.isdir(path), f"Directory {path} does not exist"
         self.cfg = cfg
         self.split = split
         self.dataset_name = dataset_name
@@ -64,6 +72,7 @@ class DiskImageDataset(QueueDataset):
         self._path = path
         self.image_dataset = []
         self.is_initialized = False
+        self._data_load_time = 0
         self._load_data(path)
         self._num_samples = len(self.image_dataset)
         self._remove_prefix = cfg["DATA"][self.split]["REMOVE_IMG_PATH_PREFIX"]
@@ -75,6 +84,26 @@ class DiskImageDataset(QueueDataset):
         # whether to use QueueDataset class to handle invalid images or not
         self.enable_queue_dataset = cfg["DATA"][self.split]["ENABLE_QUEUE_DATASET"]
 
+        if LOG_TO_MANTIK and os.getenv("DATASET_INFO_LOGGED") is None and get_rank() == 0:
+            mlflow.log_params({
+                "dataset_name": self.dataset_name,
+                "data_source": self.data_source,
+                "n_samples": self._num_samples,
+            })
+            mlflow.log_metric("data_load_time_ms", self._data_load_time)
+
+            assert isinstance(self.image_dataset, ImageFolder)
+            save_file(
+                {
+                    index: sample[0]
+                    for index, sample in enumerate(self.image_dataset.samples)
+                },
+                self._create_path("image-samples.yaml"),
+            )
+            # numpy file is larger than the JSON
+            # save_file(self.image_dataset.samples, self._create_path("image-samples.npy"))
+            os.environ["DATASET_INFO_LOGGED"] = "True"
+
     def _load_data(self, path):
         if self.data_source == "disk_filelist":
             if self.cfg["DATA"][self.split].MMAP_MODE:
@@ -82,7 +111,15 @@ class DiskImageDataset(QueueDataset):
             else:
                 self.image_dataset = load_file(path)
         elif self.data_source == "disk_folder":
+            start = time.time()
+            # TODO: pass loader that loads N-D images.
+            # Default loader is https://github.com/pytorch/vision/blob/657027f3548f20aea7b1c34e26511823b1607145/torchvision/datasets/folder.py#LL244C1-L248C34
             self.image_dataset = ImageFolder(path)
+
+            end = time.time()
+
+            self._data_load_time = (end - start) * 1e3
+
             logging.info(f"Loaded {len(self.image_dataset)} samples from folder {path}")
 
             # mark as initialized.
@@ -137,6 +174,7 @@ class DiskImageDataset(QueueDataset):
             self._init_queues()
         is_success = True
         image_path = self.image_dataset[idx]
+
         try:
             if self.data_source == "disk_filelist":
                 image_path = self._replace_img_path_prefix(
@@ -144,7 +182,8 @@ class DiskImageDataset(QueueDataset):
                     replace_prefix=self._remove_prefix,
                     new_prefix=self._new_prefix,
                 )
-                with g_pathmgr.open(image_path, "rb") as fopen:
+                # TODO: Adapt opening of image, e.g. to convolve N-D to 3-D
+                with PathManager.open(image_path, "rb") as fopen:
                     img = Image.open(fopen).convert("RGB")
             elif self.data_source == "disk_folder":
                 img = self.image_dataset[idx][0]
@@ -165,4 +204,8 @@ class DiskImageDataset(QueueDataset):
                     )
             else:
                 img = get_mean_image(self.cfg["DATA"][self.split].DEFAULT_GRAY_IMG_SIZE)
+
         return img, is_success
+
+    def _create_path(self, file_name: str) -> str:
+        return f"{self.cfg['LOSS']['deepclusterv2_loss']['output_dir']}/{file_name}"

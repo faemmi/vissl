@@ -9,11 +9,20 @@ Supports two engines: train and extract_features
 """
 
 import logging
+import time
+import os
+import contextlib
+import yaml
+
 import tempfile
 from typing import Any, Callable, List
 
+import mantik
+import mlflow
 import torch
+import torch.multiprocessing
 from iopath.common.file_io import g_pathmgr
+
 from vissl.config import AttrDict
 from vissl.data.dataset_catalog import get_data_files
 from vissl.engines import run_engine
@@ -28,6 +37,9 @@ from vissl.utils.io import cleanup_dir, copy_data_to_local, makedir
 from vissl.utils.logger import setup_logging, shutdown_logging
 from vissl.utils.misc import get_dist_run_id
 from vissl.utils.slurm import get_node_id
+from classy_vision.generic.distributed_util import get_rank, is_primary
+from vissl.utils.io import save_file
+
 
 
 def _get_available_splits(cfg: AttrDict):
@@ -64,16 +76,12 @@ def launch_distributed(
 ):
     """
     Launch the distributed training across gpus of the current node according to the cfg.
-
     If more than 1 nodes are needed for training, this function should be called on each
     of the different nodes, each time with an unique node_id in the range [0..N-1] if N
     is the total number of nodes to take part in training.
-
     Alternatively, you can use SLURM or any cluster management system to run this function
     for you.
-
     Configure the node_id, dist_run_id, setup the environment variabled
-
     Args:
         cfg (AttrDict): VISSL yaml configuration
         node_id (int): node_id for this node
@@ -81,6 +89,48 @@ def launch_distributed(
         hook_generator (Callable): Callback to generate all the ClassyVision hooks
             for this engine
     """
+    start = time.time()
+
+    rank = get_rank()
+
+    LOG_TO_MANTIK = True if os.getenv("LOG_TO_MANTIK") == "True" else False
+
+    if LOG_TO_MANTIK and rank == 0:
+        #mantik.init_tracking()
+        slurm_job_id = os.getenv("SLURM_JOB_ID")
+
+        stdout_file = os.getenv("SLURM_JOB_STDOUT").replace("%j", slurm_job_id)
+        stderr_file = os.getenv("SLURM_JOB_STDERR").replace("%j", slurm_job_id)
+
+        mlflow.start_run(
+            run_name=f"slurm-{slurm_job_id}-node-{get_node_id(node_id)}",
+        )
+
+        mlflow.log_params(
+            {
+                "SLURM_JOB_ID": slurm_job_id,
+                "SLURM_JOB_NAME": os.getenv("SLURM_JOB_NAME"),
+                "SLURM_JOB_ACCOUNT": os.getenv("SLURM_JOB_ACCOUNT"),
+                "SLURM_CLUSTER_NAME": os.getenv("SLURM_CLUSTER_NAME"),
+                "SLURM_JOB_PARTITION": os.getenv("SLURM_JOB_PARTITION"),
+                "SLURM_JOB_NUM_NODES": os.getenv("SLURM_JOB_NUM_NODES"),
+                "SLURM_NODELIST": os.getenv("SLURM_NODELIST"),
+                "SLURM_JOB_CPUS_PER_NODE": os.getenv("SLURM_JOB_CPUS_PER_NODE"),
+                "SLURM_CPUS_PER_TASK": os.getenv("SLURM_CPUS_PER_TASK"),
+                "SLURM_NPROCS": os.getenv("SLURM_NPROCS"),
+                "SLURM_NTASKS": os.getenv("SLURM_NTASKS"),
+                "SLURM_JOB_GPUS": os.getenv("SLURM_JOB_GPUS"),
+            }
+        )
+
+        # Set run ID as env var for passing to all sub-processes
+        run = mlflow.active_run()
+        os.environ["MLFLOW_RUN_ID"] = run.info.run_id
+
+        # Config is saved to disk at
+        # https://github.com/facebookresearch/vissl/blob/04788de934b39278326331f7a4396e03e85f6e55/vissl/utils/hydra_config.py#L121
+        saved_config_file = f"{get_checkpoint_folder(cfg)}/train_config.yaml"
+        mlflow.log_artifact(saved_config_file)
 
     setup_logging(__name__)
     node_id = get_node_id(node_id)
@@ -130,6 +180,16 @@ def launch_distributed(
     # copy the data to local if user wants. This can speed up dataloading.
     _copy_to_local(cfg)
 
+    if LOG_TO_MANTIK and is_primary():
+        mlflow.log_params({
+            "engine_name": engine_name,
+            "node_id": node_id,
+            "dist_run_id": dist_run_id,
+            "n_gpus_total": world_size,
+            "checkpoint_folder": checkpoint_folder,
+            "output_dir": cfg.LOSS.deepclusterv2_loss.output_dir,
+        })
+
     try:
         if world_size > 1:
             torch.multiprocessing.spawn(
@@ -158,14 +218,42 @@ def launch_distributed(
                 hook_generator=hook_generator,
             )
 
-    except (KeyboardInterrupt, RuntimeError) as e:
+    except (
+            KeyboardInterrupt, RuntimeError, torch.multiprocessing.ProcessRaisedException
+    ) as e:
+        if LOG_TO_MANTIK:
+            with open(stderr_file, "a") as f:
+                f.write(str(e))
+
+            mlflow.log_text(str(e), "error.txt")
+            mlflow.log_artifact(stderr_file)
+            mlflow.log_artifact(stdout_file)
+
+            mlflow.end_run("FAILED")
+            LOG_TO_MANTIK = False
+
         logging.error("Wrapping up, caught exception: ", e)
-        if isinstance(e, RuntimeError):
+        if isinstance(e, (RuntimeError, torch.multiprocessing.ProcessRaisedException)):
             raise e
     finally:
         _cleanup_local_dir(cfg)
 
     logging.info("All Done!")
+
+    runtime = (time.time() - start) * 1e3
+    logging.info("Total runtime (ms): %s", runtime)
+
+    if LOG_TO_MANTIK and rank == 0:
+        mlflow.log_metric("total_runtime_ms", runtime)
+
+        # The following files are saved to disk in `modified/losses/deepclusterv2_loss.py:233`
+        mlflow.log_artifacts(cfg.LOSS.deepclusterv2_loss.output_dir)
+
+        mlflow.log_artifact(stderr_file)
+        mlflow.log_artifact(stdout_file)
+
+        mlflow.end_run()
+
     shutdown_logging()
 
 
@@ -234,7 +322,6 @@ def launch_distributed_on_slurm(cfg: AttrDict, engine_name: str):
     Launch a distributed training on SLURM, allocating the nodes and GPUs as described in
     the configuration, and calls the function "launch_on_local_node" appropriately on each
     of the nodes.
-
     Args:
         cfg (AttrDict): the configuration of the experiment
         engine_name (str): the name of the engine to run (train or extract_features)
@@ -269,4 +356,4 @@ def launch_distributed_on_slurm(cfg: AttrDict, engine_name: str):
     job = executor.submit(trainer)
     print(f"SUBMITTED: {job.job_id}")
 
-    return job
+    return

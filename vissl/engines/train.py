@@ -129,5 +129,7 @@ def train_main(
     )
     trainer.train()
     logging.info("All Done!")
+    clusters = trainer.extract_clusters()
+    logging.info("Extracted clusters %s", clusters)
     # close the logging streams including the filehandlers
     shutdown_logging()
