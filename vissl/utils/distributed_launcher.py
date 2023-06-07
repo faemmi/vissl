@@ -39,6 +39,7 @@ from vissl.utils.misc import get_dist_run_id
 from vissl.utils.slurm import get_node_id
 from classy_vision.generic.distributed_util import get_rank, is_primary
 from vissl.utils.io import save_file
+import vissl.utils.mantik as mantik
 
 
 
@@ -93,9 +94,7 @@ def launch_distributed(
 
     rank = get_rank()
 
-    LOG_TO_MANTIK = True if os.getenv("LOG_TO_MANTIK") == "True" else False
-
-    if LOG_TO_MANTIK and rank == 0:
+    if mantik.tracking_enabled() and rank == 0:
         #mantik.init_tracking()
         slurm_job_id = os.getenv("SLURM_JOB_ID")
 
@@ -180,7 +179,7 @@ def launch_distributed(
     # copy the data to local if user wants. This can speed up dataloading.
     _copy_to_local(cfg)
 
-    if LOG_TO_MANTIK and is_primary():
+    if mantik.tracking_enabled() and is_primary():
         mlflow.log_params({
             "engine_name": engine_name,
             "node_id": node_id,
@@ -221,7 +220,7 @@ def launch_distributed(
     except (
             KeyboardInterrupt, RuntimeError, torch.multiprocessing.ProcessRaisedException
     ) as e:
-        if LOG_TO_MANTIK:
+        if mantik.tracking_enabled():
             with open(stderr_file, "a") as f:
                 f.write(str(e))
 
@@ -230,7 +229,8 @@ def launch_distributed(
             mlflow.log_artifact(stdout_file)
 
             mlflow.end_run("FAILED")
-            LOG_TO_MANTIK = False
+
+            mantik.disable_tracking()
 
         logging.error("Wrapping up, caught exception: ", e)
         if isinstance(e, (RuntimeError, torch.multiprocessing.ProcessRaisedException)):
@@ -243,7 +243,7 @@ def launch_distributed(
     runtime = (time.time() - start) * 1e3
     logging.info("Total runtime (ms): %s", runtime)
 
-    if LOG_TO_MANTIK and rank == 0:
+    if mantik.tracking_enabled() and rank == 0:
         mlflow.log_metric("total_runtime_ms", runtime)
 
         # The following files are saved to disk in `modified/losses/deepclusterv2_loss.py:233`

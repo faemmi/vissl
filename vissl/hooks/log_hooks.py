@@ -26,8 +26,7 @@ from vissl.utils.env import get_machine_local_and_dist_rank
 from vissl.utils.io import save_file
 from vissl.utils.logger import log_gpu_stats
 from vissl.utils.perf_stats import PerfStats
-
-LOG_TO_MANTIK = True if os.getenv("LOG_TO_MANTIK") == "True" else False
+import vissl.utils.mantik as mantik
 
 
 class LogGpuMemoryHook(ClassyHook):
@@ -581,7 +580,7 @@ class LogPerfTimeMetricsHook(ClassyHook):
                 % (phase_type, batches, total_batch_time)
             )
 
-            if LOG_TO_MANTIK and get_rank() == 0:
+            if mantik.tracking_enabled() and get_rank() == 0:
                 #loss_val = round(task.last_batch.loss.data.cpu().item(), 5)
                 loss_val = np.mean(task.losses)
                 loss_val_std = np.std(task.losses)

@@ -16,8 +16,7 @@ from vissl.data.data_helper import QueueDataset, get_mean_image
 from vissl.utils.io import load_file
 from vissl.utils.io import save_file
 from classy_vision.generic.distributed_util import get_rank
-
-LOG_TO_MANTIK = True if os.getenv("LOG_TO_MANTIK") == "True" else False
+import vissl.utils.mantik as mantik
 
 
 class DiskImageDataset(QueueDataset):
@@ -84,7 +83,7 @@ class DiskImageDataset(QueueDataset):
         # whether to use QueueDataset class to handle invalid images or not
         self.enable_queue_dataset = cfg["DATA"][self.split]["ENABLE_QUEUE_DATASET"]
 
-        if LOG_TO_MANTIK and os.getenv("DATASET_INFO_LOGGED") is None and get_rank() == 0:
+        if mantik.tracking_enabled() and os.getenv("DATASET_INFO_LOGGED") is None and get_rank() == 0:
             mlflow.log_params({
                 "dataset_name": self.dataset_name,
                 "data_source": self.data_source,

@@ -16,19 +16,17 @@ from classy_vision.generic.distributed_util import (
     gather_from_all,
     get_rank,
     get_world_size,
-    get_cuda_device_index
 )
 from classy_vision.losses import ClassyLoss, register_loss
 from torch import nn
 from vissl.config import AttrDict
 from vissl.utils.misc import get_indices_sparse
 from vissl.utils.io import save_file
-
-LOG_TO_MANTIK = True if os.getenv("LOG_TO_MANTIK") == "True" else False
+import vissl.utils.mantik as mantik
 
 torch.cuda.empty_cache()
 
-device = torch.device(f"cuda:{get_cuda_device_index}" if torch.cuda.is_available() else 'cpu')
+device = torch.device(f"cuda:{get_rank()}" if torch.cuda.is_available() else 'cpu')
 
 @register_loss("deepclusterv2_loss")
 class DeepClusterV2Loss(ClassyLoss):
@@ -95,8 +93,13 @@ class DeepClusterV2Loss(ClassyLoss):
             "indexes", -100 * torch.ones(self.nmb_heads, size_dataset).long()
         )
 
+        randoms = (
+            torch.rand(self.nmb_heads, size_dataset).half() 
+            if torch.cuda.is_available() 
+            else torch.rand(self.nmb_heads, size_dataset).float()
+        )
         self.register_buffer(
-            "distance", -100 * torch.rand(self.nmb_heads, size_dataset).half()
+            "distance", -100 * randoms
         )
 
 
@@ -134,8 +137,6 @@ class DeepClusterV2Loss(ClassyLoss):
         logging.info(f"Rank: {get_rank()}, Start initializing memory banks")
         start_idx = 0
         with torch.no_grad():
-            breakpoint()
-
             for inputs in dataloader:
                 nmb_unique_idx = len(inputs["data_idx"][0]) // self.num_crops
                 index = inputs["data_idx"][0][:nmb_unique_idx].to(device=device, non_blocking=True)
@@ -322,7 +323,7 @@ class DeepClusterV2Loss(ClassyLoss):
                 self.indexes.unique(),
             )
 
-            if LOG_TO_MANTIK:
+            if mantik.tracking_enabled():
                 epoch = _get_required_env_var("CURRENT_EPOCH")
                 epoch_comp = epoch + 1
 

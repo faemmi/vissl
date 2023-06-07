@@ -128,8 +128,8 @@ def train_main(
         cfg, dist_run_id, checkpoint_path, checkpoint_folder, hooks
     )
     trainer.train()
+
     logging.info("All Done!")
-    clusters = trainer.extract_clusters()
-    logging.info("Extracted clusters %s", clusters)
+
     # close the logging streams including the filehandlers
     shutdown_logging()
