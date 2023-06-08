@@ -92,8 +92,14 @@ class DeepClusterV2Loss(ClassyLoss):
             "indexes", -100 * torch.ones(self.nmb_heads, size_dataset).long()
         )
 
+        distance = torch.rand(self.nmb_heads, size_dataset)
+        if torch.cuda.is_available():
+            distance = distance.float()
+        else:
+            distance = distance.half()
+
         self.register_buffer(
-            "distance", -100 * torch.rand(self.nmb_heads, size_dataset).float()
+            "distance", -100 * distance
         )
 
 
