@@ -8,6 +8,7 @@ This is the train step that"s most commonly used in most of the model trainings.
 """
 
 import contextlib
+import logging
 from types import SimpleNamespace
 
 import torch
@@ -63,9 +64,18 @@ def construct_sample_for_model(batch_data, task):
     if len(sample_key_names["input"]) == 1 and len(sample_key_names["target"]) == 1:
         sample = {
             "input": batch_data[inp_key[0]][0],
+            # TODO: manually change target_key to `"data_idx"` if
+            # index labels forwarded to loss are all 0s.
+            # Can also be done in config via `config.DATA.TRAIN.TARGET_KEY_NAMES`
             "target": batch_data[target_key[0]][0],
             "data_valid": batch_data["data_valid"][0],
         }
+        logging.info(
+            "Constructing sample for model: target_key=%s, batch_data[%s]=%s",
+            target_key[0],
+            target_key[0],
+            batch_data[target_key[0]][0],
+        )
 
     # multi-input case (example in PIRL, we pass image and patches both).
     # we nest all these under the sample["input"]
@@ -105,6 +115,8 @@ def standard_train_step(task):
     of an epoch
     """
     assert isinstance(task, ClassyTask), "task is not instance of ClassyTask"
+
+    logging.info("Using data iterator %s", task.data_iterator)
 
     # reset the last batch info at every step
     task.last_batch = LastBatchInfo()

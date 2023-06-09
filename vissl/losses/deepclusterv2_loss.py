@@ -25,7 +25,6 @@ import vissl.utils.mantik as mantik
 
 torch.cuda.empty_cache()
 
-device = torch.device(f"cuda:{get_rank()}" if torch.cuda.is_available() else 'cpu')
 
 @register_loss("deepclusterv2_loss")
 class DeepClusterV2Loss(ClassyLoss):
@@ -70,6 +69,8 @@ class DeepClusterV2Loss(ClassyLoss):
         self.nmb_kmeans_iters = self.loss_config.kmeans_iters
         self.start_idx = 0
 
+        self.device = torch.device("cpu" if mantik.cpu_usage_enabled() else f"cuda:{get_rank()}")
+
         self.register_buffer(
             "local_memory_embeddings",
             torch.zeros(self.nmb_mbs, size_memory_per_process, self.embedding_dim),
@@ -93,14 +94,13 @@ class DeepClusterV2Loss(ClassyLoss):
         )
 
         distance = torch.rand(self.nmb_heads, size_dataset)
-        if torch.cuda.is_available():
+
+        if mantik.cpu_usage_enabled():
             distance = distance.float()
         else:
             distance = distance.half()
 
-        self.register_buffer(
-            "distance", -100 * distance
-        )
+        self.register_buffer("distance", -100 * distance)
 
 
 
@@ -134,19 +134,17 @@ class DeepClusterV2Loss(ClassyLoss):
         return loss
 
     def init_memory(self, dataloader, model):
-        logging.info(f"Rank: {get_rank()}, Start initializing memory banks")
+        logging.info("Rank: %s, Start initializing memory banks for device %s", get_rank(), self.device.type)
         start_idx = 0
-        #import torch.multiprocessing
-        #torch.multiprocessing.set_sharing_strategy('file_system')
         with torch.no_grad():
 
             for inputs in dataloader:
                 nmb_unique_idx = len(inputs["data_idx"][0]) // self.num_crops
-                index = inputs["data_idx"][0][:nmb_unique_idx].to(device=device, non_blocking=True)
+                index = inputs["data_idx"][0][:nmb_unique_idx].to(device=self.device, non_blocking=True)
                 # get embeddings
                 outputs = []
                 for crop_idx in self.crops_for_mb:
-                    inp = inputs["data"][0][crop_idx].to(device=device, non_blocking=True)
+                    inp = inputs["data"][0][crop_idx].to(device=self.device, non_blocking=True)
                     outputs.append(nn.functional.normalize(model(inp)[0], dim=1, p=2))
 
                 # fill the memory bank
@@ -157,33 +155,23 @@ class DeepClusterV2Loss(ClassyLoss):
                     ] = embeddings
                 start_idx += nmb_unique_idx
         logging.info(
-            f"Rank: {get_rank()}, Memory banks initialized, "
-            "full first forward pass done: \n%s (shape=%s, unique=%s)",
-            self.local_memory_index,
-            self.local_memory_index.shape,
-            self.local_memory_index.unique()
+            "Rank: %s, Memory banks initialized, full first forward pass done",
+            get_rank(),
         )
 
     def update_memory_bank(self, emb, idx):
         logging.info("Rank: %s, Updating memory bank for index %s (start_index=%s)", get_rank(), idx, self.start_idx)
         nmb_unique_idx = len(idx) // self.num_crops
-        logging.info("Rank: %s, nmb_unique_idx=%s (num_crops=%s)", get_rank(), nmb_unique_idx, self.num_crops)
         idx = idx[:nmb_unique_idx]
-        logging.info("Rank: %s, Calculated new index %s (num_crops=%s)", get_rank(), idx, self.num_crops)
-        logging.info("Rank: %s, Settings %s to %s", get_rank(), self.local_memory_index[self.start_idx : self.start_idx + nmb_unique_idx], idx)
         self.local_memory_index[self.start_idx : self.start_idx + nmb_unique_idx] = idx
-        logging.info("Rank: %s, Done, result=%s", get_rank(), self.local_memory_index[self.start_idx : self.start_idx + nmb_unique_idx])
         for i, crop_idx in enumerate(self.crops_for_mb):
             self.local_memory_embeddings[i][
                 self.start_idx : self.start_idx + nmb_unique_idx
             ] = emb[crop_idx * nmb_unique_idx : (crop_idx + 1) * nmb_unique_idx]
         self.start_idx += nmb_unique_idx
         logging.info(
-            f"Rank: {get_rank()}, Updated memory banks, "
-            "full first forward pass done: %s (shape=%s, unique=%s)",
-            self.local_memory_index,
-            self.local_memory_index.shape,
-            self.local_memory_index.unique()
+            "Rank: %s, Updated memory banks, full first forward pass done",
+            get_rank(),
         )
 
     def cluster_memory(self):
@@ -194,7 +182,7 @@ class DeepClusterV2Loss(ClassyLoss):
                 # run distributed k-means
 
                 # init centroids with elements from memory bank of rank 0
-                centroids = torch.empty(K, self.embedding_dim).to(device=device, non_blocking=True)
+                centroids = torch.empty(K, self.embedding_dim).to(device=self.device, non_blocking=True)
                 if get_rank() == 0:
                     random_idx = torch.randperm(len(self.local_memory_embeddings[j]))[
                         :K
@@ -217,9 +205,9 @@ class DeepClusterV2Loss(ClassyLoss):
                         break
                     # M step
                     where_helper = get_indices_sparse(assignments.cpu().numpy())
-                    counts = torch.zeros(K).to(device=device, non_blocking=True).int()
+                    counts = torch.zeros(K).to(device=self.device, non_blocking=True).int()
                     emb_sums = torch.zeros(K, self.embedding_dim).to(
-                        device=device,
+                        device=self.device,
                         non_blocking=True
                     )
                     for k in range(len(where_helper)):
@@ -241,44 +229,10 @@ class DeepClusterV2Loss(ClassyLoss):
 
                 getattr(self, "centroids" + str(i_K)).copy_(centroids)
 
-                logging.info(
-                    "Clustering result (rank=%s):\n"
-                    "assignments=%s (shape=%s, unique values=%s),\n "
-                    "distances=%s (shape=%s, unique values=%s),\n"
-                    "indexes=%s (shape=%s, unique values=%s)",
-                    get_rank(),
-                    assignments,
-                    assignments.shape,
-                    assignments.unique(),
-                    distance,
-                    distance.shape,
-                    distance.unique(),
-                    self.local_memory_index,
-                    self.local_memory_index.shape,
-                    self.local_memory_index.unique(),
-                )
-
                 # gather the assignments
                 assignments_all = gather_from_all(assignments)
                 indexes_all = gather_from_all(self.local_memory_index)
                 distance_all = gather_from_all(distance)
-
-                logging.info(
-                    "Clustering result (rank=%s) after gathering from all ranks:\n"
-                    "assignments=%s (shape=%s, unique values=%s),\n "
-                    "distances=%s (shape=%s, unique values=%s),\n"
-                    "indexes=%s (shape=%s, unique values=%s)",
-                    get_rank(),
-                    assignments_all,
-                    assignments_all.shape,
-                    assignments_all.unique(),
-                    distance_all,
-                    distance_all.shape,
-                    distance_all.unique(),
-                    indexes_all,
-                    indexes_all.shape,
-                    indexes_all.unique(),
-                )
 
                 self.assignments[i_K] = -100
                 self.assignments[i_K][indexes_all] = assignments_all
@@ -289,48 +243,13 @@ class DeepClusterV2Loss(ClassyLoss):
                 self.distance[i_K] = -100
                 self.distance[i_K][indexes_all] = distance_all
 
-                logging.info(
-                    "Clustering result (rank=%s) after K-means iteration %s:\n"
-                    "assignments=%s (shape=%s, unique values=%s),\n "
-                    "distances=%s (shape=%s, unique values=%s),\n"
-                    "indexes=%s (shape=%s, unique values=%s)",
-                    get_rank(),
-                    n_iter,
-                    self.assignments,
-                    self.assignments.shape,
-                    self.assignments.unique(),
-                    self.distance,
-                    self.distance.shape,
-                    self.distance.unique(),
-                    self.indexes,
-                    self.indexes.shape,
-                    self.indexes.unique(),
-                )
-
                 j = (j + 1) % self.nmb_mbs
-
-            logging.info(
-                "Final clustering result on rank %s:\n"
-                "assignments=%s (shape=%s, unique values=%s),\n "
-                "distances=%s (shape=%s, unique values=%s),\n"
-                "indexes=%s (shape=%s, unique values=%s)",
-                get_rank(),
-                self.assignments,
-                self.assignments.shape,
-                self.assignments.unique(),
-                self.distance,
-                self.distance.shape,
-                self.distance.unique(),
-                self.indexes,
-                self.indexes.shape,
-                self.indexes.unique(),
-            )
 
             if mantik.tracking_enabled():
                 epoch = mantik.get_current_epoch()
                 epoch_comp = epoch + 1
 
-                if epoch_comp == 1 or (epoch_comp <= 100 and epoch_comp % 5 == 0) or epoch_comp % 100 == 0:
+                if epoch_comp == 1 or (epoch_comp <= 100 and epoch_comp % 25 == 0) or epoch_comp % 100 == 0:
                     logging.info("Saving clustering data on rank %s at epoch %s", get_rank(), epoch)
 
                     centroids_last_iter = getattr(self, f"centroids{len(self.num_clusters) - 1}")

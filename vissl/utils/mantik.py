@@ -2,6 +2,7 @@ import os
 
 _TRACKING_ENV_VAR = "TRACK_TO_MANTIK"
 _CURRENT_EPOCH_ENV_VAR = "CURRENT_EPOCH"
+_CPU_USAGE_ENV_VAR = "CPU_USAGE_ENABLED"
 
 
 def tracking_enabled() -> bool:
@@ -26,3 +27,9 @@ def _get_required_env_var(name: str) -> int:
     if value is None:
         raise RuntimeError(f"Environment variable {name} unset")
     return int(value)
+
+def set_cpu_usage() -> None:
+    os.environ[_CPU_USAGE_ENV_VAR] = "True"
+
+def cpu_usage_enabled() -> bool:
+    return True if os.getenv(_CPU_USAGE_ENV_VAR) == "True" else False

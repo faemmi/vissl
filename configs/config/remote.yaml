@@ -24,8 +24,14 @@ config:
       DATA_SOURCES: [disk_folder] # can be user specified
       LABEL_SOURCES: [disk_folder] # can be user specified
       DATASET_NAMES: [remote_dataset_jsc_hourly]
-      BATCHSIZE_PER_REPLICA: 750  # number of unique samples in minibatch per gpu
+      BATCHSIZE_PER_REPLICA: 64  # number of unique samples in minibatch per gpu
+      # either standard | sample_index | zero
       LABEL_TYPE: sample_index    # just an implementation detail. Label isn't used
+      # Somehow the data loader wrapping in data/__init__.py#L218 (DataloaderAsyncGPUWrapper)
+      # causes the dataloader to return a tensor of 0s for the labels, 
+      # which should actually return the sample indexes (`LABEL_TYPE`).
+      # Hence, we manually set the target key sames to `data_idx` instead of `labels`.
+      TARGET_KEY_NAMES: ["data_idx"]
       TRANSFORMS:                 # https://vissl.readthedocs.io/en/latest/api/data.html
         - name: ImgPilToMultiCrop
           total_num_crops: 2

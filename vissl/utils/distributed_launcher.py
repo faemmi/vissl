@@ -17,7 +17,6 @@ import yaml
 import tempfile
 from typing import Any, Callable, List
 
-import mantik
 import mlflow
 import torch
 import torch.multiprocessing
@@ -95,7 +94,6 @@ def launch_distributed(
     rank = get_rank()
 
     if mantik.tracking_enabled() and rank == 0:
-        #mantik.init_tracking()
         slurm_job_id = os.getenv("SLURM_JOB_ID")
 
         stdout_file = os.getenv("SLURM_JOB_STDOUT").replace("%j", slurm_job_id)
@@ -143,6 +141,8 @@ def launch_distributed(
             f"available. Number of gpus found on user system={torch.cuda.device_count()}. "
             "Please set the DISTRIBUTED.NUM_PROC_PER_NODE properly."
         )
+    else:
+        mantik.set_cpu_usage()
 
     # set the environment variables including local rank, node id etc.
     set_env_vars(local_rank=0, node_id=node_id, cfg=cfg)
@@ -232,7 +232,7 @@ def launch_distributed(
 
             mantik.disable_tracking()
 
-        logging.error("Wrapping up, caught exception: ", e)
+        logging.error("Wrapping up, caught exception", exc_info=True)
         if isinstance(e, (RuntimeError, torch.multiprocessing.ProcessRaisedException)):
             raise e
     finally:

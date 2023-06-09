@@ -123,7 +123,7 @@ def get_sampler(dataset, dataset_config, sampler_seed=0):
             )
         else:
             data_sampler = torch.utils.data.distributed.DistributedSampler(dataset)
-        logging.info("Created the Distributed Sampler....")
+        logging.info("Created the Distributed Sampler %s", data_sampler)
         print_sampler_config(data_sampler)
     else:
         logging.warning(
@@ -185,6 +185,8 @@ def build_dataloader(
     # Replace the worker_init_fn with a deterministic one when debugging
     if dataset_config["USE_DEBUGGING_SAMPLER"]:
         worker_init_fn = debugging_worker_init_fn
+
+    logging.info("Creating dataloader for dataset %s", dataset)
 
     # Create the pytorch dataloader
     dataloader = DataLoader(
