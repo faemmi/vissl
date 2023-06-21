@@ -8,9 +8,12 @@ import functools
 import logging
 import subprocess
 import sys
+import os
 
 from iopath.common.file_io import g_pathmgr
 from vissl.utils.io import makedir
+
+_LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
 
 
 def setup_logging(name, output_dir=None, rank=0):
@@ -19,6 +22,7 @@ def setup_logging(name, output_dir=None, rank=0):
 
     For file handlers, we only setup for the master gpu.
     """
+    level = getattr(logging, _LOG_LEVEL)
     # get the filename if we want to log to the file as well
     log_filename = None
     if output_dir:
@@ -27,7 +31,7 @@ def setup_logging(name, output_dir=None, rank=0):
             log_filename = f"{output_dir}/log.txt"
 
     logger = logging.getLogger(name)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(level)
 
     # create formatter
     FORMAT = "%(levelname)s %(asctime)s %(filename)s:%(lineno)4d: %(message)s"
@@ -40,14 +44,14 @@ def setup_logging(name, output_dir=None, rank=0):
 
     # setup the console handler
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.DEBUG)
+    console_handler.setLevel(level)
     console_handler.setFormatter(formatter)
     logger.addHandler(console_handler)
 
     # we log to file as well if user wants
     if log_filename and rank == 0:
         file_handler = logging.StreamHandler(_cached_log_stream(log_filename))
-        file_handler.setLevel(logging.DEBUG)
+        file_handler.setLevel(level)
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
 
