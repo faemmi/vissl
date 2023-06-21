@@ -585,7 +585,8 @@ class LogPerfTimeMetricsHook(ClassyHook):
                 else:
                     lr_val = round(task.optimizer.options_view.lr, 5)
 
-                mlflow.log_metrics(
+                mantik.call_mlflow_method(
+                    mlflow.log_metrics,
                     {
                         "rank": get_rank(),
                         "phase_idx": task.phase_idx,

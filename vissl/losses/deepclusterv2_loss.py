@@ -118,7 +118,7 @@ class DeepClusterV2Loss(ClassyLoss):
         return cls(loss_config)
 
     def forward(self, output: torch.Tensor, idx: int):
-        logging.info("Rank: %s, Forwarding for index %s", get_rank(), idx)
+        logging.debug("Rank: %s, Forwarding for index %s", get_rank(), idx)
         output = nn.functional.normalize(output, dim=1, p=2)
         loss = 0
         for i in range(self.nmb_heads):
@@ -160,7 +160,7 @@ class DeepClusterV2Loss(ClassyLoss):
         )
 
     def update_memory_bank(self, emb, idx):
-        logging.info("Rank: %s, Updating memory bank for index %s (start_index=%s)", get_rank(), idx, self.start_idx)
+        logging.debug("Rank: %s, Updating memory bank for index %s (start_index=%s)", get_rank(), idx, self.start_idx)
         nmb_unique_idx = len(idx) // self.num_crops
         idx = idx[:nmb_unique_idx]
         self.local_memory_index[self.start_idx : self.start_idx + nmb_unique_idx] = idx

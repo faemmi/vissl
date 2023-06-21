@@ -84,12 +84,19 @@ class DiskImageDataset(QueueDataset):
         self.enable_queue_dataset = cfg["DATA"][self.split]["ENABLE_QUEUE_DATASET"]
 
         if mantik.tracking_enabled() and os.getenv("DATASET_INFO_LOGGED") is None and get_rank() == 0:
-            mlflow.log_params({
-                "dataset_name": self.dataset_name,
-                "data_source": self.data_source,
-                "n_samples": self._num_samples,
-            })
-            mlflow.log_metric("data_load_time_ms", self._data_load_time)
+            mantik.call_mlflow_method(
+                mlflow.log_params,
+                {
+                    "dataset_name": self.dataset_name,
+                    "data_source": self.data_source,
+                    "n_samples": self._num_samples,
+                }
+            )
+            mantik.call_mlflow_method(
+                mlflow.log_metric,
+                "data_load_time_ms", 
+                self._data_load_time,
+            )
 
             assert isinstance(self.image_dataset, ImageFolder)
             save_file(

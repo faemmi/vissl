@@ -70,7 +70,7 @@ def construct_sample_for_model(batch_data, task):
             "target": batch_data[target_key[0]][0],
             "data_valid": batch_data["data_valid"][0],
         }
-        logging.info(
+        logging.debug(
             "Constructing sample for model: target_key=%s, batch_data[%s]=%s",
             target_key[0],
             target_key[0],
@@ -116,7 +116,7 @@ def standard_train_step(task):
     """
     assert isinstance(task, ClassyTask), "task is not instance of ClassyTask"
 
-    logging.info("Using data iterator %s", task.data_iterator)
+    logging.debug("Using data iterator %s", task.data_iterator)
 
     # reset the last batch info at every step
     task.last_batch = LastBatchInfo()

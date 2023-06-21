@@ -99,11 +99,13 @@ def launch_distributed(
         stdout_file = os.getenv("SLURM_JOB_STDOUT").replace("%j", slurm_job_id)
         stderr_file = os.getenv("SLURM_JOB_STDERR").replace("%j", slurm_job_id)
 
-        mlflow.start_run(
+        mantik.call_mlflow_method(
+            mlflow.start_run,
             run_name=f"slurm-{slurm_job_id}-node-{get_node_id(node_id)}",
         )
 
-        mlflow.log_params(
+        mantik.call_mlflow_method(
+            mlflow.log_params,
             {
                 "SLURM_JOB_ID": slurm_job_id,
                 "SLURM_JOB_NAME": os.getenv("SLURM_JOB_NAME"),
@@ -121,13 +123,15 @@ def launch_distributed(
         )
 
         # Set run ID as env var for passing to all sub-processes
-        run = mlflow.active_run()
-        os.environ["MLFLOW_RUN_ID"] = run.info.run_id
+        run = mantik.call_mlflow_method(mlflow.active_run)
+        
+        if run is not None:
+            os.environ["MLFLOW_RUN_ID"] = run.info.run_id
 
         # Config is saved to disk at
         # https://github.com/facebookresearch/vissl/blob/04788de934b39278326331f7a4396e03e85f6e55/vissl/utils/hydra_config.py#L121
         saved_config_file = f"{get_checkpoint_folder(cfg)}/train_config.yaml"
-        mlflow.log_artifact(saved_config_file)
+        mantik.call_mlflow_method(mlflow.log_artifact, saved_config_file)
 
     setup_logging(__name__)
     node_id = get_node_id(node_id)
@@ -180,14 +184,17 @@ def launch_distributed(
     _copy_to_local(cfg)
 
     if mantik.tracking_enabled() and is_primary():
-        mlflow.log_params({
-            "engine_name": engine_name,
-            "node_id": node_id,
-            "dist_run_id": dist_run_id,
-            "n_gpus_total": world_size,
-            "checkpoint_folder": checkpoint_folder,
-            "output_dir": cfg.LOSS.deepclusterv2_loss.output_dir,
-        })
+        mantik.call_mlflow_method(
+            mlflow.log_params,
+            {
+                "engine_name": engine_name,
+                "node_id": node_id,
+                "dist_run_id": dist_run_id,
+                "n_gpus_total": world_size,
+                "checkpoint_folder": checkpoint_folder,
+                "output_dir": cfg.LOSS.deepclusterv2_loss.output_dir,
+            }
+        )
 
     try:
         if world_size > 1:
@@ -224,11 +231,12 @@ def launch_distributed(
             with open(stderr_file, "a") as f:
                 f.write(str(e))
 
-            mlflow.log_text(str(e), "error.txt")
-            mlflow.log_artifact(stderr_file)
-            mlflow.log_artifact(stdout_file)
+            mantik.call_mlflow_method(mlflow.log_text, str(e), "error.txt")
+        
+            mantik.call_mlflow_method(mlflow.log_artifact, stderr_file)
+            mantik.call_mlflow_method(mlflow.log_artifact, stdout_file)
 
-            mlflow.end_run("FAILED")
+            mantik.call_mlflow_method(mlflow.end_run, "FAILED")
 
             mantik.disable_tracking()
 
@@ -244,15 +252,15 @@ def launch_distributed(
     logging.info("Total runtime (ms): %s", runtime)
 
     if mantik.tracking_enabled() and rank == 0:
-        mlflow.log_metric("total_runtime_ms", runtime)
+        mantik.call_mlflow_method(mlflow.log_metric, "total_runtime_ms", runtime)
 
         # The following files are saved to disk in `modified/losses/deepclusterv2_loss.py:233`
-        mlflow.log_artifacts(cfg.LOSS.deepclusterv2_loss.output_dir)
+        mantik.call_mlflow_method(mlflow.log_artifacts, cfg.LOSS.deepclusterv2_loss.output_dir)
 
-        mlflow.log_artifact(stderr_file)
-        mlflow.log_artifact(stdout_file)
+        mantik.call_mlflow_method(mlflow.log_artifact, stderr_file)
+        mantik.call_mlflow_method(mlflow.log_artifact, stdout_file)
 
-        mlflow.end_run()
+        mantik.call_mlflow_method(mlflow.end_run)
 
     shutdown_logging()
 
