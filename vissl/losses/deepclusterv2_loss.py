@@ -245,21 +245,17 @@ class DeepClusterV2Loss(ClassyLoss):
 
                 j = (j + 1) % self.nmb_mbs
 
-            if mantik.tracking_enabled():
-                epoch = mantik.get_current_epoch()
-                epoch_comp = epoch + 1
+            epoch = mantik.get_current_epoch()
+            epoch_comp = epoch + 1
 
-                if epoch_comp == 1 or (epoch_comp <= 100 and epoch_comp % 25 == 0) or epoch_comp % 100 == 0:
-                    logging.info("Saving clustering data on rank %s at epoch %s", get_rank(), epoch)
+            if epoch_comp == 1 or (epoch_comp <= 100 and epoch_comp % 25 == 0) or epoch_comp % 100 == 0:
+                logging.info("Saving clustering data on rank %s at epoch %s", get_rank(), epoch)
 
-                    centroids_last_iter = getattr(self, f"centroids{len(self.num_clusters) - 1}")
-
-                    logging.info("Saving clustering information to disk")
-
-                    torch.save(centroids_last_iter, self._create_path("centroids.pt", epoch=epoch))
-                    torch.save(self.assignments, self._create_path("assignments.pt", epoch=epoch))
-                    torch.save(self.indexes, self._create_path("indexes.pt", epoch=epoch))
-                    torch.save(self.distance, self._create_path("distances.pt", epoch=epoch))
+                centroids_last_iter = getattr(self, f"centroids{len(self.num_clusters) - 1}")
+                torch.save(centroids_last_iter, self._create_path("centroids.pt", epoch=epoch))
+                torch.save(self.assignments, self._create_path("assignments.pt", epoch=epoch))
+                torch.save(self.indexes, self._create_path("indexes.pt", epoch=epoch))
+                torch.save(self.distance, self._create_path("distances.pt", epoch=epoch))
 
         logging.info(f"Rank: {get_rank()}, clustering of the memory bank done")
 

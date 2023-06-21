@@ -46,7 +46,7 @@ def call_mlflow_method(func: Callable, *args, **kwargs):
             "Calling MLflow method %s with args %s and kwargs %s has failed",
             func,
             args,
-            kwargs
+            kwargs,
             exc_info=True,
         )
 
