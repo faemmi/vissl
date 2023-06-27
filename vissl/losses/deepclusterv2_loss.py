@@ -20,6 +20,7 @@ from classy_vision.generic.distributed_util import (
 from classy_vision.losses import ClassyLoss, register_loss
 from torch import nn
 from vissl.config import AttrDict
+from vissl.utils.env import get_machine_local_and_dist_rank
 from vissl.utils.misc import get_indices_sparse
 import vissl.utils.mantik as mantik
 
@@ -69,7 +70,8 @@ class DeepClusterV2Loss(ClassyLoss):
         self.nmb_kmeans_iters = self.loss_config.kmeans_iters
         self.start_idx = 0
 
-        self.device = torch.device("cpu" if mantik.cpu_usage_enabled() else f"cuda:{get_rank()}")
+        local_rank, _ = get_machine_local_and_dist_rank()
+        self.device = torch.device("cpu" if mantik.cpu_usage_enabled() else f"cuda:{local_rank}")
 
         self.register_buffer(
             "local_memory_embeddings",
