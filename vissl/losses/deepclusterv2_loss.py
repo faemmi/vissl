@@ -92,6 +92,10 @@ class DeepClusterV2Loss(ClassyLoss):
 
         # Note (fabian.emmerich): Added extras
         self.register_buffer(
+            "embeddings",
+            torch.zeros(self.nmb_heads, self.nmb_mbs, size_dataset, self.embedding_dim),
+        )
+        self.register_buffer(
             "indexes", -100 * torch.ones(self.nmb_heads, size_dataset).long()
         )
 
@@ -233,11 +237,16 @@ class DeepClusterV2Loss(ClassyLoss):
 
                 # gather the assignments
                 assignments_all = gather_from_all(assignments)
+                embeddings_all = gather_from_all(self.local_memory_embeddings)
                 indexes_all = gather_from_all(self.local_memory_index)
                 distance_all = gather_from_all(distance)
 
                 self.assignments[i_K] = -100
                 self.assignments[i_K][indexes_all] = assignments_all
+
+                self.embeddings[i_K] = -100
+                for i in range(self.nmb_mbs):
+                    self.embeddings[i_K][i][indexes_all] = embeddings_all[i]
 
                 self.indexes[i_K] = -100
                 self.indexes[i_K][indexes_all] = indexes_all
@@ -256,6 +265,7 @@ class DeepClusterV2Loss(ClassyLoss):
                 centroids_last_iter = getattr(self, f"centroids{len(self.num_clusters) - 1}")
                 torch.save(centroids_last_iter, self._create_path("centroids.pt", epoch=epoch))
                 torch.save(self.assignments, self._create_path("assignments.pt", epoch=epoch))
+                torch.save(self.embeddings, self._create_path("embeddings.pt", epoch=epoch))
                 torch.save(self.indexes, self._create_path("indexes.pt", epoch=epoch))
                 torch.save(self.distance, self._create_path("distances.pt", epoch=epoch))
 
