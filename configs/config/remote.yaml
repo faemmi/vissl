@@ -95,6 +95,7 @@ config:
     deepclusterv2_loss:
       num_train_samples: 35064
       #num_train_samples: 54864
+      # Defines the number of samples to process per GPU
       #BATCHSIZE_PER_REPLICA: 750
       BATCHSIZE_PER_REPLICA: 64
       num_crops: 2
@@ -105,6 +106,7 @@ config:
       kmeans_iters: 10
       memory_params:
         crops_for_mb: [0, 1]
+        # Embedding dim must match output dimension of last MLP layer
         embedding_dim: 128
       output_dir: /tmp/deepclusterv2
   OPTIMIZER:
