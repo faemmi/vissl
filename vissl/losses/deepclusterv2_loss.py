@@ -166,6 +166,17 @@ class DeepClusterV2Loss(ClassyLoss):
         )
 
     def update_memory_bank(self, emb, idx):
+        """Update memory banks.
+
+        Parameters
+        ----------
+        embeddings : torch.Tensor, shape(n_crops, n_dim)
+            Embeddings of each crop.
+        idx : torch.Tensor, shape(n_crops * n_samples)
+            Indexes of the data samples.
+            E.g. if 2 crops and 2 samples given, ``idx`` has shape (4) and looks as
+            ``tensor([1, 0, 1, 0])``, where 0 and 1 are the indexes of the two data samples.
+        """
         logging.debug("Rank: %s, Updating memory bank for index %s (start_index=%s)", get_rank(), idx, self.start_idx)
         nmb_unique_idx = len(idx) // self.num_crops
         idx = idx[:nmb_unique_idx]

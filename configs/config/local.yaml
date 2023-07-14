@@ -22,8 +22,13 @@ config:
     TRAIN:
       DATA_SOURCES: [disk_folder] # can be user specified
       DATASET_NAMES: [local_test_dataset]
-      BATCHSIZE_PER_REPLICA: 64  # number of unique samples in minibatch per gpu
+      BATCHSIZE_PER_REPLICA: 8  # number of unique samples in minibatch per gpu
       LABEL_TYPE: sample_index    # just an implementation detail. Label isn't used
+      # Somehow the data loader wrapping in data/__init__.py#L218 (DataloaderAsyncGPUWrapper)
+      # causes the dataloader to return a tensor of 0s for the labels, 
+      # which should actually return the sample indexes (`LABEL_TYPE`).
+      # Hence, we manually set the target key sames to `data_idx` instead of `labels`.
+      TARGET_KEY_NAMES: ["data_idx"]
       TRANSFORMS:                 # https://vissl.readthedocs.io/en/latest/api/data.html
         - name: ImgPilToMultiCrop
           total_num_crops: 2
@@ -76,8 +81,7 @@ config:
   LOSS:
     name: deepclusterv2_loss
     deepclusterv2_loss:
-      num_train_samples: 128
-      BATCHSIZE_PER_REPLICA: 64
+      num_train_samples: 64
       num_crops: 2
       temperature: 0.1
       #num_clusters: [3000, 3000, 3000]
@@ -134,7 +138,7 @@ config:
   DISTRIBUTED:
     BACKEND: gloo
     NUM_NODES: 1    # number of machines to use in training. Each machine can have many gpus. NODES count number of unique hosts
-    NUM_PROC_PER_NODE: 8 # set this to the number of gpus per machine.
+    NUM_PROC_PER_NODE: 1 # set this to the number of gpus per machine.
     RUN_ID: auto  #"localhost:49160" #  #(date +'%Y%m%d')/specify run_id={master_node}:{port}/unique rendezvous run_id that is specific to 1 run.
     INIT_METHOD: tcp  # this could be tcp | env | file or any other pytorch supported methods
     # every training run should have a unique id. Following are the options:

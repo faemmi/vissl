@@ -24,7 +24,8 @@ config:
       DATA_SOURCES: [disk_folder] # can be user specified
       LABEL_SOURCES: [disk_folder] # can be user specified
       DATASET_NAMES: [remote_dataset_jsc_hourly]
-      BATCHSIZE_PER_REPLICA: 64  # number of unique samples in minibatch per gpu
+      # Number of unique samples in minibatch per GPU
+      BATCHSIZE_PER_REPLICA: 64  
       # either standard | sample_index | zero
       LABEL_TYPE: sample_index    # just an implementation detail. Label isn't used
       # Somehow the data loader wrapping in data/__init__.py#L218 (DataloaderAsyncGPUWrapper)
@@ -95,9 +96,6 @@ config:
     deepclusterv2_loss:
       num_train_samples: 35064
       #num_train_samples: 54864
-      # Defines the number of samples to process per GPU
-      #BATCHSIZE_PER_REPLICA: 750
-      BATCHSIZE_PER_REPLICA: 64
       num_crops: 2
       temperature: 0.1
       #num_clusters: [3000, 3000, 3000]
