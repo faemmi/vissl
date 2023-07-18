@@ -274,11 +274,15 @@ class DeepClusterV2Loss(ClassyLoss):
                 indexes_all = gather_from_all(self.local_memory_index)
                 distance_all = gather_from_all(distance)
 
+                self.assignments[i_K] = -1
                 self.assignments[i_K][indexes_all] = assignments_all
+                self.indexes[i_K] = -1
                 self.indexes[i_K][indexes_all] = indexes_all
+                self.distance[i_K] = -1.0
                 self.distance[i_K][indexes_all] = distance_all
 
                 for i in range(self.nmb_mbs):
+                    self.embeddings[i_K][i] = -1.0
                     self.embeddings[i_K][i][indexes_all] = embeddings_all[i]
 
                 j = (j + 1) % self.nmb_mbs
@@ -321,6 +325,11 @@ class DeepClusterV2Loss(ClassyLoss):
                 plotting.deepclusterv2.assignments.plot_abundance(
                     assignments=self.assignments[-1],
                     name=f"epoch-{epoch}-assignments-abundance",
+                    output_dir=self.plots_dir,
+                )
+                plotting.deepclusterv2.assignments.plot_appearance_per_week(
+                    assignments=self.assignments[-1],
+                    name=f"epoch-{epoch}-appearance-per-week",
                     output_dir=self.plots_dir,
                 )
 
