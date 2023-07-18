@@ -6,6 +6,7 @@
 import logging
 import math
 import pprint
+from typing import Union
 
 import mlflow
 import torch
@@ -274,6 +275,21 @@ class DeepClusterV2Loss(ClassyLoss):
                 indexes_all = gather_from_all(self.local_memory_index)
                 distance_all = gather_from_all(distance)
 
+                for tensor, value in [
+                    (assignments_all, -1),
+                    (embeddings_all, -1.0),
+                    (indexes_all, -1),
+                    (distance_all, -1.0),
+                ]:
+                    if _tensor_contains_value(tensor=tensor, value=value):
+                        indexes = _tensor_contains_value_at(tensor=tensor, value=value)
+                        logging.warning(
+                            "After gathering from all ranks, tensor %s contains value %s at indexes %s",
+                            tensor,
+                            value,
+                            indexes,
+                        )
+
                 self.assignments[i_K] = -1
                 self.assignments[i_K][indexes_all] = assignments_all
                 self.indexes[i_K] = -1
@@ -365,3 +381,15 @@ def _calculate_number_of_unassigned_samples(assignments: torch.Tensor) -> int:
     unassigned_sample_indexes = (assignments == -1).nonzero(as_tuple=True)[0]
     n_unassigned_samples = len(unassigned_sample_indexes)
     return n_unassigned_samples
+
+
+def _tensor_contains_value(tensor: torch.Tensor, value: Union[int, float]) -> bool:
+    indexes = _tensor_contains_value_at(tensor=tensor, value=value)
+    [size] = indexes.size()
+    return size != 0
+
+
+def _tensor_contains_value_at(
+    tensor: torch.Tensor, value: Union[int, float]
+) -> torch.Tensor:
+    return (tensor == value).nonzero(as_tuple=True)[0].int()
