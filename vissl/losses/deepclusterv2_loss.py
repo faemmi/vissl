@@ -19,6 +19,7 @@ from classy_vision.generic.distributed_util import (
 from classy_vision.losses import ClassyLoss, register_loss
 from torch import nn
 import vissl.plotting as plotting
+import vissl.utils.io as io
 import vissl.utils.mantik as mantik
 from vissl.config import AttrDict
 from vissl.utils.env import get_machine_local_and_dist_rank
@@ -84,14 +85,14 @@ class DeepClusterV2Loss(ClassyLoss):
             "local_memory_index", torch.zeros(size_memory_per_process).long()
         )
         self.register_buffer(
-            "assignments", -100 * torch.ones(self.nmb_heads, size_dataset).long()
+            "assignments", -1 * torch.ones(self.nmb_heads, size_dataset).long()
         )
         for i, k in enumerate(self.loss_config.num_clusters):
             self.register_buffer(
                 "centroids" + str(i), torch.rand(k, self.embedding_dim)
             )
 
-        self.cross_entropy_loss = nn.CrossEntropyLoss(ignore_index=-100)
+        self.cross_entropy_loss = nn.CrossEntropyLoss(ignore_index=-1)
 
         # Note (fabian.emmerich): Added extras
         self.register_buffer(
@@ -99,7 +100,7 @@ class DeepClusterV2Loss(ClassyLoss):
             torch.zeros(self.nmb_heads, self.nmb_mbs, size_dataset, self.embedding_dim),
         )
         self.register_buffer(
-            "indexes", -100 * torch.ones(self.nmb_heads, size_dataset).long()
+            "indexes", -1 * torch.ones(self.nmb_heads, size_dataset).long()
         )
 
         distance = torch.rand(self.nmb_heads, size_dataset)
@@ -109,7 +110,13 @@ class DeepClusterV2Loss(ClassyLoss):
         else:
             distance = distance.half()
 
-        self.register_buffer("distance", -100 * distance)
+        self.register_buffer("distance", -1 * distance)
+
+        self.tensors_dir = f"{self.loss_config.output_dir}/tensors"
+        self.plots_dir = f"{self.loss_config.output_dir}/plots"
+        io.makedir(self.loss_config.output_dir)
+        io.makedir(self.tensors_dir)
+        io.makedir(self.plots_dir)
 
     @classmethod
     def from_config(cls, loss_config: AttrDict):
@@ -306,7 +313,10 @@ class DeepClusterV2Loss(ClassyLoss):
                 )
 
                 plotting.deepclusterv2.embeddings.plot_embeddings_using_tsne(
-                    embeddings=self.embeddings[-1], assignments=self.assignments[-1]
+                    embeddings=self.embeddings[-1],
+                    assignments=self.assignments[-1],
+                    name=f"epoch-{epoch}-embeddings",
+                    output_dir=self.plots_dir,
                 )
 
                 if mantik.tracking_enabled():
@@ -334,10 +344,10 @@ class DeepClusterV2Loss(ClassyLoss):
         return pprint.pformat(repr_dict, indent=2)
 
     def _create_path(self, file_name: str, epoch: int) -> str:
-        return f"{self.loss_config.output_dir}/epoch-{epoch}-{file_name}"
+        return f"{self.tensors_dir}/epoch-{epoch}-{file_name}"
 
 
 def _calculate_number_of_unassigned_samples(assignments: torch.Tensor) -> int:
-    unassigned_sample_indexes = (assignments == -100).nonzero(as_tuple=True)[0]
+    unassigned_sample_indexes = (assignments == -1).nonzero(as_tuple=True)[0]
     n_unassigned_samples = len(unassigned_sample_indexes)
     return n_unassigned_samples

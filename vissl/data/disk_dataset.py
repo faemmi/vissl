@@ -12,9 +12,9 @@ from classy_vision.generic.distributed_util import get_rank
 from fvcore.common.file_io import PathManager
 from PIL import Image
 from torchvision.datasets import ImageFolder
+import vissl.utils.io as io
 import vissl.utils.mantik as mantik
 from vissl.data.data_helper import QueueDataset, get_mean_image
-from vissl.utils.io import load_file, save_file
 
 
 class DiskImageDataset(QueueDataset):
@@ -98,7 +98,8 @@ class DiskImageDataset(QueueDataset):
                 )
 
             assert isinstance(self.image_dataset, ImageFolder)
-            save_file(
+            io.makedir(self._create_path(""))
+            io.save_file(
                 {
                     index: sample[0]
                     for index, sample in enumerate(self.image_dataset.samples)
@@ -112,9 +113,9 @@ class DiskImageDataset(QueueDataset):
     def _load_data(self, path):
         if self.data_source == "disk_filelist":
             if self.cfg["DATA"][self.split].MMAP_MODE:
-                self.image_dataset = load_file(path, mmap_mode="r")
+                self.image_dataset = io.load_file(path, mmap_mode="r")
             else:
-                self.image_dataset = load_file(path)
+                self.image_dataset = io.load_file(path)
         elif self.data_source == "disk_folder":
             start = time.time()
             # TODO: pass loader that loads N-D images.
