@@ -63,6 +63,10 @@ def construct_sample_for_model(batch_data, task):
     # single input case
     if len(sample_key_names["input"]) == 1 and len(sample_key_names["target"]) == 1:
         sample = {
+            # batch_data[<key>][0] is a list of e.g. 2 tensors,
+            # where each tensor represents the two image crops as a batch.
+            # E.g. if batch size and crop size are 8 and 96, respectively,
+            # ``batch_data[inp_key[0]][0][1].shape = torch.Size([8, 3, 96, 96])``.
             "input": batch_data[inp_key[0]][0],
             # TODO: manually change target_key to `"data_idx"` if
             # index labels forwarded to loss are all 0s.
@@ -153,6 +157,9 @@ def standard_train_step(task):
                 # Manually sync params and buffers for DDP.
                 manual_sync_params(task.model)
             model_output = task.model(sample["input"])
+
+        # For a batch size of e.g. 8 and 2 crops, ``model_output`` has shape
+        # ``torch.Size([16, 128])``
 
         # If the model outputs only one tensor, we take it out of the list.
         if len(model_output) == 1:

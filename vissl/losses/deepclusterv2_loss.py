@@ -160,7 +160,7 @@ class DeepClusterV2Loss(ClassyLoss):
                         start_idx : start_idx + nmb_unique_idx
                     ] = embeddings
                 start_idx += nmb_unique_idx
-        logging.info(
+        logging.debug(
             "Rank: %s, Memory banks initialized, full first forward pass done",
             get_rank(),
         )
@@ -186,7 +186,7 @@ class DeepClusterV2Loss(ClassyLoss):
                 self.start_idx : self.start_idx + nmb_unique_idx
             ] = emb[crop_idx * nmb_unique_idx : (crop_idx + 1) * nmb_unique_idx]
         self.start_idx += nmb_unique_idx
-        logging.info(
+        logging.debug(
             "Rank: %s, Updated memory banks, full first forward pass done",
             get_rank(),
         )
@@ -252,18 +252,12 @@ class DeepClusterV2Loss(ClassyLoss):
                 indexes_all = gather_from_all(self.local_memory_index)
                 distance_all = gather_from_all(distance)
 
-                self.assignments[i_K] = -100
                 self.assignments[i_K][indexes_all] = assignments_all
+                self.indexes[i_K][indexes_all] = indexes_all
+                self.distance[i_K][indexes_all] = distance_all
 
-                self.embeddings[i_K] = -100
                 for i in range(self.nmb_mbs):
                     self.embeddings[i_K][i][indexes_all] = embeddings_all[i]
-
-                self.indexes[i_K] = -100
-                self.indexes[i_K][indexes_all] = indexes_all
-
-                self.distance[i_K] = -100
-                self.distance[i_K][indexes_all] = distance_all
 
                 j = (j + 1) % self.nmb_mbs
 
