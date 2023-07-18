@@ -11,8 +11,6 @@ Supports two engines: train and extract_features
 import logging
 import time
 import os
-import contextlib
-import yaml
 
 import tempfile
 from typing import Any, Callable, List
@@ -37,8 +35,8 @@ from vissl.utils.logger import setup_logging, shutdown_logging
 from vissl.utils.misc import get_dist_run_id
 from vissl.utils.slurm import get_node_id
 from classy_vision.generic.distributed_util import get_rank, is_primary
-from vissl.utils.io import save_file
 import vissl.utils.mantik as mantik
+import vissl.utils.logger as _logger
 
 
 
@@ -89,6 +87,13 @@ def launch_distributed(
         hook_generator (Callable): Callback to generate all the ClassyVision hooks
             for this engine
     """
+    if cfg.VERBOSE:
+        level = "DEBUG"
+        os.environ[_logger.LOG_LEVEL_ENV_VAR] = level
+        logging.debug("Verbosity enabled, using logging level %s", level)
+
+    setup_logging(__name__)
+
     start = time.time()
 
     rank = get_rank()
@@ -133,7 +138,6 @@ def launch_distributed(
         saved_config_file = f"{get_checkpoint_folder(cfg)}/train_config.yaml"
         mantik.call_mlflow_method(mlflow.log_artifact, saved_config_file)
 
-    setup_logging(__name__)
     node_id = get_node_id(node_id)
     dist_run_id = get_dist_run_id(cfg, cfg.DISTRIBUTED.NUM_NODES)
     world_size = cfg.DISTRIBUTED.NUM_NODES * cfg.DISTRIBUTED.NUM_PROC_PER_NODE

@@ -1,6 +1,6 @@
 # @package _global_
 config:
-  VERBOSE: True
+  VERBOSE: False
   LOG_FREQUENCY: 100
   TEST_ONLY: False
   TEST_MODEL: False

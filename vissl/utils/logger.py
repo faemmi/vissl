@@ -13,7 +13,8 @@ import os
 from iopath.common.file_io import g_pathmgr
 from vissl.utils.io import makedir
 
-_LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+LOG_LEVEL_ENV_VAR = "LOG_LEVEL"
+_LOG_LEVEL = os.getenv(LOG_LEVEL_ENV_VAR, "INFO")
 
 
 def setup_logging(name, output_dir=None, rank=0):

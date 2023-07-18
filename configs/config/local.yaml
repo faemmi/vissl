@@ -1,5 +1,5 @@
 config:
-  VERBOSE: True
+  VERBOSE: False
   LOG_FREQUENCY: 10
   TEST_ONLY: False
   TEST_MODEL: False
