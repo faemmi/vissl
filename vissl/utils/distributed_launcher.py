@@ -84,45 +84,51 @@ def launch_distributed(
         hook_generator (Callable): Callback to generate all the ClassyVision hooks
             for this engine
     """
+    start = time.time()
+
     if cfg.VERBOSE:
         level = "DEBUG"
         os.environ[_logger.LOG_LEVEL_ENV_VAR] = level
         logging.debug("Verbosity enabled, using logging level %s", level)
 
-    setup_logging(__name__)
-
-    start = time.time()
+    if cfg.TRACK_TO_MANTIK:
+        mantik.enable_tracking()
 
     rank = get_rank()
+    setup_logging(__name__, output_dir=cfg.CHECKPOINT.DIR, rank=rank)
 
     if mantik.tracking_enabled() and rank == 0:
         slurm_job_id = os.getenv("SLURM_JOB_ID")
 
-        stdout_file = os.getenv("SLURM_JOB_STDOUT").replace("%j", slurm_job_id)
-        stderr_file = os.getenv("SLURM_JOB_STDERR").replace("%j", slurm_job_id)
+        if slurm_job_id is not None:
+            stdout_file = os.getenv("SLURM_JOB_STDOUT").replace("%j", slurm_job_id)
+            stderr_file = os.getenv("SLURM_JOB_STDERR").replace("%j", slurm_job_id)
 
-        mantik.call_mlflow_method(
-            mlflow.start_run,
-            run_name=f"slurm-{slurm_job_id}-node-{get_node_id(node_id)}",
-        )
+            mantik.call_mlflow_method(
+                mlflow.start_run,
+                run_name=f"slurm-{slurm_job_id}-node-{get_node_id(node_id)}",
+            )
 
-        mantik.call_mlflow_method(
-            mlflow.log_params,
-            {
-                "SLURM_JOB_ID": slurm_job_id,
-                "SLURM_JOB_NAME": os.getenv("SLURM_JOB_NAME"),
-                "SLURM_JOB_ACCOUNT": os.getenv("SLURM_JOB_ACCOUNT"),
-                "SLURM_CLUSTER_NAME": os.getenv("SLURM_CLUSTER_NAME"),
-                "SLURM_JOB_PARTITION": os.getenv("SLURM_JOB_PARTITION"),
-                "SLURM_JOB_NUM_NODES": os.getenv("SLURM_JOB_NUM_NODES"),
-                "SLURM_NODELIST": os.getenv("SLURM_NODELIST"),
-                "SLURM_JOB_CPUS_PER_NODE": os.getenv("SLURM_JOB_CPUS_PER_NODE"),
-                "SLURM_CPUS_PER_TASK": os.getenv("SLURM_CPUS_PER_TASK"),
-                "SLURM_NPROCS": os.getenv("SLURM_NPROCS"),
-                "SLURM_NTASKS": os.getenv("SLURM_NTASKS"),
-                "SLURM_JOB_GPUS": os.getenv("SLURM_JOB_GPUS"),
-            },
-        )
+            mantik.call_mlflow_method(
+                mlflow.log_params,
+                {
+                    "SLURM_JOB_ID": slurm_job_id,
+                    "SLURM_JOB_NAME": os.getenv("SLURM_JOB_NAME"),
+                    "SLURM_JOB_ACCOUNT": os.getenv("SLURM_JOB_ACCOUNT"),
+                    "SLURM_CLUSTER_NAME": os.getenv("SLURM_CLUSTER_NAME"),
+                    "SLURM_JOB_PARTITION": os.getenv("SLURM_JOB_PARTITION"),
+                    "SLURM_JOB_NUM_NODES": os.getenv("SLURM_JOB_NUM_NODES"),
+                    "SLURM_NODELIST": os.getenv("SLURM_NODELIST"),
+                    "SLURM_JOB_CPUS_PER_NODE": os.getenv("SLURM_JOB_CPUS_PER_NODE"),
+                    "SLURM_CPUS_PER_TASK": os.getenv("SLURM_CPUS_PER_TASK"),
+                    "SLURM_NPROCS": os.getenv("SLURM_NPROCS"),
+                    "SLURM_NTASKS": os.getenv("SLURM_NTASKS"),
+                    "SLURM_JOB_GPUS": os.getenv("SLURM_JOB_GPUS"),
+                },
+            )
+        else:
+            stdout_file = f"{cfg.CHECKPOINT.DIR}/log.txt"
+            stderr_file = None
 
         # Set run ID as env var for passing to all sub-processes
         run = mantik.call_mlflow_method(mlflow.active_run)
@@ -236,8 +242,9 @@ def launch_distributed(
 
             mantik.call_mlflow_method(mlflow.log_text, str(e), "error.txt")
 
-            mantik.call_mlflow_method(mlflow.log_artifact, stderr_file)
             mantik.call_mlflow_method(mlflow.log_artifact, stdout_file)
+            if stderr_file is not None:
+                mantik.call_mlflow_method(mlflow.log_artifact, stderr_file)
 
             mantik.call_mlflow_method(mlflow.end_run, "FAILED")
 
@@ -262,8 +269,9 @@ def launch_distributed(
             mlflow.log_artifacts, cfg.LOSS.deepclusterv2_loss.output_dir
         )
 
-        mantik.call_mlflow_method(mlflow.log_artifact, stderr_file)
         mantik.call_mlflow_method(mlflow.log_artifact, stdout_file)
+        if stderr_file is not None:
+            mantik.call_mlflow_method(mlflow.log_artifact, stderr_file)
 
         mantik.call_mlflow_method(mlflow.end_run)
 

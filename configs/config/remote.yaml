@@ -1,5 +1,6 @@
 # @package _global_
 config:
+  TRACK_TO_MANTIK: True
   VERBOSE: False
   LOG_FREQUENCY: 100
   TEST_ONLY: False

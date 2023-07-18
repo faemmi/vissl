@@ -10,6 +10,11 @@ _CURRENT_EPOCH_ENV_VAR = "CURRENT_EPOCH"
 _CPU_USAGE_ENV_VAR = "CPU_USAGE_ENABLED"
 
 
+def enable_tracking() -> bool:
+    """Set env var that determines whether tracking is enabled."""
+    os.environ[_TRACKING_ENV_VAR] = "True"
+
+
 def tracking_enabled() -> bool:
     """Return whether logging to mantik is enabled."""
     return True if os.getenv(_TRACKING_ENV_VAR) == "True" else False

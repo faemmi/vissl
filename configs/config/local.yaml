@@ -1,4 +1,5 @@
 config:
+  TRACK_TO_MANTIK: True
   VERBOSE: False
   LOG_FREQUENCY: 10
   TEST_ONLY: False
@@ -90,7 +91,7 @@ config:
       memory_params:
         crops_for_mb: [0, 1]
         embedding_dim: 128
-      output_dir: /home/fabian/data/deepclusterv2
+      output_dir: /home/fabian/data/deepclusterv2/clustering
   OPTIMIZER:
       name: sgd
       use_larc: False # ratio between gradient and parameter magnitudes is used to calculate an adaptive local learning rate for each individual parameter
