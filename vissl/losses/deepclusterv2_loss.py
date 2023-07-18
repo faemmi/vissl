@@ -7,6 +7,7 @@ import logging
 import math
 import pprint
 
+import mlflow
 import torch
 import torch.distributed as dist
 from classy_vision.generic.distributed_util import (
@@ -17,6 +18,7 @@ from classy_vision.generic.distributed_util import (
 )
 from classy_vision.losses import ClassyLoss, register_loss
 from torch import nn
+import vissl.plotting as plotting
 import vissl.utils.mantik as mantik
 from vissl.config import AttrDict
 from vissl.utils.env import get_machine_local_and_dist_rank
@@ -303,6 +305,28 @@ class DeepClusterV2Loss(ClassyLoss):
                     self.distance, self._create_path("distances.pt", epoch=epoch)
                 )
 
+                plotting.deepclusterv2.embeddings.plot_embeddings_using_tsne(
+                    embeddings=self.embeddings[-1], assignments=self.assignments[-1]
+                )
+
+                if mantik.tracking_enabled():
+                    n_unassigned_samples = _calculate_number_of_unassigned_samples(
+                        self.assignments[-1],
+                    )
+                    mantik.call_mlflow_method(
+                        mlflow.log_metric,
+                        "unassigned_samples",
+                        n_unassigned_samples,
+                    )
+                    percent_unassigned_samples = (
+                        n_unassigned_samples / self.assignments.shape[-1]
+                    )
+                    mantik.call_mlflow_method(
+                        mlflow.log_metric,
+                        "unassigned_samples_percent",
+                        percent_unassigned_samples,
+                    )
+
         logging.info(f"Rank: {get_rank()}, clustering of the memory bank done")
 
     def __repr__(self):
@@ -311,3 +335,9 @@ class DeepClusterV2Loss(ClassyLoss):
 
     def _create_path(self, file_name: str, epoch: int) -> str:
         return f"{self.loss_config.output_dir}/epoch-{epoch}-{file_name}"
+
+
+def _calculate_number_of_unassigned_samples(assignments: torch.Tensor) -> int:
+    unassigned_sample_indexes = (assignments == -100).nonzero(as_tuple=True)[0]
+    n_unassigned_samples = len(unassigned_sample_indexes)
+    return n_unassigned_samples
