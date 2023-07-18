@@ -106,7 +106,6 @@ class LARC_FSDP(object):
     def step(self):
         weight_decays = []
         with torch.no_grad():
-
             # Compute the parameter norms and gradient norms that are
             # required to find the adaptative_lr of each parameter group
             if self.distributed_norm:
@@ -120,7 +119,6 @@ class LARC_FSDP(object):
 
             param_group_count = 0
             for group in self.optim.param_groups:
-
                 # absorb weight decay control from optimizer
                 weight_decay = group["weight_decay"] if "weight_decay" in group else 0
                 weight_decays.append(weight_decay)
@@ -210,11 +208,11 @@ class LARC_FSDP(object):
         for group in param_groups:
             for p in group["params"]:
                 if p.grad is not None:
-                    param_squares.append((p.data ** 2).sum())
-                    grad_squares.append((p.grad.data ** 2).sum())
+                    param_squares.append((p.data**2).sum())
+                    grad_squares.append((p.grad.data**2).sum())
         all_squared = torch.stack(param_squares + grad_squares)
         dist.all_reduce(all_squared, group=get_global_group())
-        all_squared = all_squared ** 0.5
+        all_squared = all_squared**0.5
         param_norms = all_squared[: len(param_squares)]
         grad_norms = all_squared[len(param_squares) :]
         return param_norms, grad_norms

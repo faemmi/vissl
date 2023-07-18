@@ -2,7 +2,7 @@
 timm's Apache 2.0 license
 =======================================================================
 We modified and utilize the Vision Transformer implementation from
-https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py. 
+https://github.com/rwightman/pytorch-image-models/blob/master/timm/models/vision_transformer.py.
 The license is as follows:
 
                                 Apache License

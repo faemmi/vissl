@@ -580,7 +580,6 @@ class SelfSupervisionTrainer(object):
         """
         merged_cluster_assignments = {}
         for split in rank_cluster_assignment.keys():
-
             split_assignments = list(rank_cluster_assignment[split].items())
             image_indices = [assignment[0] for assignment in split_assignments]
             image_indices = torch.LongTensor(image_indices).cuda(

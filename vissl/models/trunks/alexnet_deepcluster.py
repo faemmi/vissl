@@ -12,7 +12,6 @@ from vissl.models.trunks import register_model_trunk
 
 @register_model_trunk("alexnet_deepcluster")
 class AlexNetDeepCluster(nn.Module):
-
     # use sobel filter, BN, dim=2
     def __init__(self, model_config: AttrDict, model_name: str):
         super().__init__()

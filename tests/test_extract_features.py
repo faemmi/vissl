@@ -96,14 +96,12 @@ class TestExtractClusterWorkflow(unittest.TestCase):
     @gpu_test(gpu_count=2)
     def test_extract_cluster_assignment_ddp(self):
         with in_temporary_directory() as pretrain_dir:
-
             # Run a pre-training to have some weights to being with
             pretrain_config = self._create_pretraining_config()
             run_integration_test(pretrain_config)
 
             # Create a directory to contain the extracted features
             with in_temporary_directory() as extract_dir:
-
                 # Run the extract engine in a separate directory to check that
                 # it is correctly able to output the feature in a another dir
                 with in_temporary_directory():

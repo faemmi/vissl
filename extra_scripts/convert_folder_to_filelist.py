@@ -23,7 +23,7 @@ import os
 
 from iopath.common.file_io import g_pathmgr
 from vissl.utils.env import setup_path_manager
-from vissl.utils.io import save_file, cleanup_dir
+from vissl.utils.io import cleanup_dir, save_file
 
 
 def get_argument_parser():

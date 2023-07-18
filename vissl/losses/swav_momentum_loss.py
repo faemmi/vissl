@@ -133,7 +133,6 @@ class SwAVMomentumLoss(ClassyLoss):
 
         loss = 0
         for head_id, proto_scores in enumerate(output[1:]):
-
             bs = proto_scores.shape[0] // self.loss_config.num_crops
             sub_loss = 0
             for j, crop_id in enumerate(self.loss_config.crops_for_assign):

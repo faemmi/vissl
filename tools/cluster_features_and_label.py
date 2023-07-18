@@ -186,7 +186,6 @@ def main(args: Namespace, cfg: AttrDict):
 
     # Extract the features if the feature extract is enabled
     if cfg.CLUSTERFIT.FEATURES.EXTRACT:
-
         # We cannot have automatic extraction with more than 1 node or otherwise
         # we would have to run this script on several nodes and thus have several
         # parallel clustering of the features. The automatic extraction is only

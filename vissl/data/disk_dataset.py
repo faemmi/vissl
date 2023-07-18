@@ -8,15 +8,13 @@ import os
 import time
 
 import mlflow
-
+from classy_vision.generic.distributed_util import get_rank
 from fvcore.common.file_io import PathManager
 from PIL import Image
 from torchvision.datasets import ImageFolder
-from vissl.data.data_helper import QueueDataset, get_mean_image
-from vissl.utils.io import load_file
-from vissl.utils.io import save_file
-from classy_vision.generic.distributed_util import get_rank
 import vissl.utils.mantik as mantik
+from vissl.data.data_helper import QueueDataset, get_mean_image
+from vissl.utils.io import load_file, save_file
 
 
 class DiskImageDataset(QueueDataset):
@@ -91,11 +89,11 @@ class DiskImageDataset(QueueDataset):
                         "dataset_name": self.dataset_name,
                         "data_source": self.data_source,
                         "n_samples": self._num_samples,
-                    }
+                    },
                 )
                 mantik.call_mlflow_method(
                     mlflow.log_metric,
-                    "data_load_time_ms", 
+                    "data_load_time_ms",
                     self._data_load_time,
                 )
 

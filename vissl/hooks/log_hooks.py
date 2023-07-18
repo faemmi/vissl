@@ -10,7 +10,6 @@ import datetime
 import json
 import logging
 import time
-import os
 from typing import Optional
 
 import mlflow
@@ -21,12 +20,12 @@ from classy_vision.generic.distributed_util import get_rank, is_primary
 from classy_vision.hooks.classy_hook import ClassyHook
 from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
 from iopath.common.file_io import g_pathmgr
+import vissl.utils.mantik as mantik
 from vissl.utils.checkpoint import CheckpointWriter, is_checkpoint_phase
 from vissl.utils.env import get_machine_local_and_dist_rank
 from vissl.utils.io import save_file
 from vissl.utils.logger import log_gpu_stats
 from vissl.utils.perf_stats import PerfStats
-import vissl.utils.mantik as mantik
 
 
 class LogGpuMemoryHook(ClassyHook):
@@ -71,9 +70,9 @@ class LogGpuMemoryHook(ClassyHook):
 
     def _print_memory_summary(self, task: "tasks.ClassyTask", stage_name: str) -> None:
         if (
-                is_primary()
-                and (task.device.type == "cuda")
-                and task.local_iteration_num == self.log_iteration_num
+            is_primary()
+            and (task.device.type == "cuda")
+            and task.local_iteration_num == self.log_iteration_num
         ):
             logging.info(
                 f"========= Memory Summary at {stage_name} ======="
@@ -118,7 +117,7 @@ class DumpMemoryOnException(ClassyHook):
     @staticmethod
     def _is_pytorch(obj):
         return torch.is_tensor(obj) or (
-                hasattr(obj, "data") and torch.is_tensor(obj.data)
+            hasattr(obj, "data") and torch.is_tensor(obj.data)
         )
 
 
@@ -151,9 +150,9 @@ class LogGpuStatsHook(ClassyHook):
         useful for monitoring memory usage.
         """
         if (
-                is_primary()
-                and (task.device.type == "cuda")
-                and task.local_iteration_num == 50
+            is_primary()
+            and (task.device.type == "cuda")
+            and task.local_iteration_num == 50
         ):
             log_gpu_stats()
 
@@ -174,7 +173,7 @@ class LogLossLrEtaHook(ClassyHook):
     on_loss_and_meter = ClassyHook._noop
 
     def __init__(
-            self, checkpoint_folder: str, btime_freq: Optional[int] = None
+        self, checkpoint_folder: str, btime_freq: Optional[int] = None
     ) -> None:
         """
         Args:
@@ -216,9 +215,9 @@ class LogLossLrEtaHook(ClassyHook):
                 peak_mem_used = -1
 
             if (
-                    (iteration == 1)
-                    or (iteration % log_freq == 0)
-                    or (iteration <= 100 and iteration % 5 == 0)
+                (iteration == 1)
+                or (iteration % log_freq == 0)
+                or (iteration <= 100 and iteration % 5 == 0)
             ):
                 loss_val = round(task.last_batch.loss.data.cpu().item(), 5)
                 if len(task.batch_time) > 0:
@@ -252,7 +251,7 @@ class LogLossLrEtaHook(ClassyHook):
 
                 if self.btime_freq and len(batch_times) >= self.btime_freq:
                     rolling_avg_time = (
-                            sum(batch_times[-self.btime_freq :]) / self.btime_freq
+                        sum(batch_times[-self.btime_freq :]) / self.btime_freq
                     )
                     rolling_eta_secs = int(
                         rolling_avg_time * (task.max_iteration - iteration)
@@ -369,11 +368,11 @@ class LogLossMetricsCheckpointHook(ClassyHook):
         )
 
     def _checkpoint_model(
-            self,
-            task: "tasks.ClassyTask",
-            mode_frequency: int,
-            mode_num: int,
-            mode: str = "phase",
+        self,
+        task: "tasks.ClassyTask",
+        mode_frequency: int,
+        mode_num: int,
+        mode: str = "phase",
     ):
         """
         Checkpoint model. Can be called in 3 possible scenarios:
@@ -401,9 +400,9 @@ class LogLossMetricsCheckpointHook(ClassyHook):
             mode_num, mode_frequency, train_phase_idx, num_train_phases, mode
         )
         is_final_train_phase = (
-                (train_phase_idx == (num_train_phases - 1))
-                and task.train
-                and mode == "phase"
+            (train_phase_idx == (num_train_phases - 1))
+            and task.train
+            and mode == "phase"
         )
 
         # handle checkpoint:
@@ -485,8 +484,8 @@ class LogLossMetricsCheckpointHook(ClassyHook):
         save_metrics["train_phase_idx"] = train_phase_idx
         for meter in task.meters:
             if len(task.meters) > 0 and (
-                    (task.train and task.config["METERS"]["enable_training_meter"])
-                    or (not task.train)
+                (task.train and task.config["METERS"]["enable_training_meter"])
+                or (not task.train)
             ):
                 meter_value = meter.value
                 metric_key = f"{phase_type}_{meter.name}"
@@ -534,7 +533,7 @@ class LogPerfTimeMetricsHook(ClassyHook):
         # Set current epoch as env var.
         mantik.set_current_epoch(task.train_phase_idx)
 
-    #def on_loss_and_meter(self, task: "tasks.ClassyTask") -> None:
+    # def on_loss_and_meter(self, task: "tasks.ClassyTask") -> None:
     #    """
     #    Log performance metrics every log_freq batches, if log_freq is not None.
     #    """
@@ -576,7 +575,7 @@ class LogPerfTimeMetricsHook(ClassyHook):
             )
 
             if mantik.tracking_enabled() and get_rank() == 0:
-                #loss_val = round(task.last_batch.loss.data.cpu().item(), 5)
+                # loss_val = round(task.last_batch.loss.data.cpu().item(), 5)
                 loss_val = np.mean(task.losses)
                 loss_val_std = np.std(task.losses)
 

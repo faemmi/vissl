@@ -195,7 +195,6 @@ class QueueDataset(Dataset):
     """
 
     def __init__(self, queue_size):
-
         self.queue_size = queue_size
         # we create a CPU queue to buffer the valid seen images. We use these
         # images to replace the invalid images in the minibatch

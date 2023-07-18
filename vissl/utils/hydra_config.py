@@ -116,9 +116,9 @@ def compose_hydra_configuration(overrides: List[str]):
     # Backward compatibility with previous hydra versions:
     # In Hydra 1.1 and above, the compose API is not experimental anymore
     if get_hydra_version() >= (1, 1, 0):
-        from hydra import initialize_config_module, compose
+        from hydra import compose, initialize_config_module
     else:
-        from hydra.experimental import initialize_config_module, compose
+        from hydra.experimental import compose, initialize_config_module
 
     # Compose the overrides with "vissl/config/defaults.yaml"
     with initialize_config_module(config_module="vissl.config"):
@@ -293,7 +293,7 @@ def infer_learning_rate(cfg):
 
         scale_factor = float(batch_size) / base_lr_batch_size
         if scaling_type == "sqrt":
-            scale_factor = scale_factor ** 0.5
+            scale_factor = scale_factor**0.5
         scaled_lr = base_lr * scale_factor
         cfg.OPTIMIZER.param_schedulers.lr = get_scaled_lr_scheduler(
             cfg, param_schedulers, scaled_lr
@@ -324,7 +324,7 @@ def infer_learning_rate(cfg):
 
         scale_factor = float(batch_size) / base_lr_batch_size
         if scaling_type == "sqrt":
-            scale_factor = scale_factor ** 0.5
+            scale_factor = scale_factor**0.5
         scaled_lr = base_lr * scale_factor
         cfg.OPTIMIZER.param_schedulers.lr_head = get_scaled_lr_scheduler(
             cfg, param_schedulers, scaled_lr

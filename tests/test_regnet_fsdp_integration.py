@@ -177,7 +177,6 @@ class TestRegnetFSDPIntegration(unittest.TestCase):
     @gpu_test(gpu_count=2)
     def test_fsdp_integration_with_linear_eval(self):
         with in_temporary_directory() as pretrain_dir:
-
             # Start pre-training
             config = self._create_pretraining_config(
                 with_fsdp=True,

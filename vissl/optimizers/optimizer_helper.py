@@ -4,7 +4,7 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-from typing import Any, List, Dict
+from typing import Any, Dict, List
 
 import torch.nn as nn
 from fvcore.common.param_scheduler import ParamScheduler
@@ -180,7 +180,6 @@ def get_optimizer_param_groups(
     regularized_params, unregularized_params = [], []
 
     for name, module in model.named_modules():
-
         # head, Linear/Conv layer
         if "head" in name and (
             isinstance(module, nn.Linear) or isinstance(module, _CONV_TYPES)

@@ -44,7 +44,6 @@ class TestExtractFeatureUtils(unittest.TestCase):
 
     def test_get_shard_file_names(self):
         with in_temporary_directory() as temp_dir:
-
             # Generate a bunch of split/feature files
             for split in ["train", "test"]:
                 for layer in ["heads", "res5"]:
@@ -64,7 +63,6 @@ class TestExtractFeatureUtils(unittest.TestCase):
 
     def test_merge_features(self):
         with in_temporary_directory() as temp_dir:
-
             # Save the data we need to merge back
             indices, features, targets = self.prepare_data(
                 split="train", layer="heads", num_shards=4, feat_shape=(10, 16)

@@ -207,7 +207,6 @@ def standard_train_step(task):
     # Run backward now and update the optimizer
     if task.train:
         with PerfTimer("backward", perf_stats), record_function("backward"):
-
             task.optimizer.zero_grad()
             if task.amp_type == AmpType.APEX:
                 with apex.amp.scale_loss(

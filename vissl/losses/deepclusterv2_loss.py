@@ -4,10 +4,8 @@
 # LICENSE file in the root directory of this source tree.
 
 import logging
-
 import math
 import pprint
-import os
 
 import torch
 import torch.distributed as dist
@@ -19,10 +17,11 @@ from classy_vision.generic.distributed_util import (
 )
 from classy_vision.losses import ClassyLoss, register_loss
 from torch import nn
+import vissl.utils.mantik as mantik
 from vissl.config import AttrDict
 from vissl.utils.env import get_machine_local_and_dist_rank
 from vissl.utils.misc import get_indices_sparse
-import vissl.utils.mantik as mantik
+
 
 torch.cuda.empty_cache()
 
@@ -71,7 +70,9 @@ class DeepClusterV2Loss(ClassyLoss):
         self.start_idx = 0
 
         local_rank, _ = get_machine_local_and_dist_rank()
-        self.device = torch.device("cpu" if mantik.cpu_usage_enabled() else f"cuda:{local_rank}")
+        self.device = torch.device(
+            "cpu" if mantik.cpu_usage_enabled() else f"cuda:{local_rank}"
+        )
 
         self.register_buffer(
             "local_memory_embeddings",
@@ -108,8 +109,6 @@ class DeepClusterV2Loss(ClassyLoss):
 
         self.register_buffer("distance", -100 * distance)
 
-
-
     @classmethod
     def from_config(cls, loss_config: AttrDict):
         """
@@ -128,7 +127,6 @@ class DeepClusterV2Loss(ClassyLoss):
         output = nn.functional.normalize(output, dim=1, p=2)
         loss = 0
         for i in range(self.nmb_heads):
-
             scores = (
                 torch.mm(output, getattr(self, "centroids" + str(i)).t())
                 / self.temperature
@@ -140,17 +138,24 @@ class DeepClusterV2Loss(ClassyLoss):
         return loss
 
     def init_memory(self, dataloader, model):
-        logging.info("Rank: %s, Start initializing memory banks for device %s", get_rank(), self.device.type)
+        logging.info(
+            "Rank: %s, Start initializing memory banks for device %s",
+            get_rank(),
+            self.device.type,
+        )
         start_idx = 0
         with torch.no_grad():
-
             for inputs in dataloader:
                 nmb_unique_idx = len(inputs["data_idx"][0]) // self.num_crops
-                index = inputs["data_idx"][0][:nmb_unique_idx].to(device=self.device, non_blocking=True)
+                index = inputs["data_idx"][0][:nmb_unique_idx].to(
+                    device=self.device, non_blocking=True
+                )
                 # get embeddings
                 outputs = []
                 for crop_idx in self.crops_for_mb:
-                    inp = inputs["data"][0][crop_idx].to(device=self.device, non_blocking=True)
+                    inp = inputs["data"][0][crop_idx].to(
+                        device=self.device, non_blocking=True
+                    )
                     outputs.append(nn.functional.normalize(model(inp)[0], dim=1, p=2))
 
                 # fill the memory bank
@@ -177,7 +182,12 @@ class DeepClusterV2Loss(ClassyLoss):
             E.g. if 2 crops and 2 samples given, ``idx`` has shape (4) and looks as
             ``tensor([1, 0, 1, 0])``, where 0 and 1 are the indexes of the two data samples.
         """
-        logging.debug("Rank: %s, Updating memory bank for index %s (start_index=%s)", get_rank(), idx, self.start_idx)
+        logging.debug(
+            "Rank: %s, Updating memory bank for index %s (start_index=%s)",
+            get_rank(),
+            idx,
+            self.start_idx,
+        )
         nmb_unique_idx = len(idx) // self.num_crops
         idx = idx[:nmb_unique_idx]
         self.local_memory_index[self.start_idx : self.start_idx + nmb_unique_idx] = idx
@@ -199,7 +209,9 @@ class DeepClusterV2Loss(ClassyLoss):
                 # run distributed k-means
 
                 # init centroids with elements from memory bank of rank 0
-                centroids = torch.empty(K, self.embedding_dim).to(device=self.device, non_blocking=True)
+                centroids = torch.empty(K, self.embedding_dim).to(
+                    device=self.device, non_blocking=True
+                )
                 if get_rank() == 0:
                     random_idx = torch.randperm(len(self.local_memory_embeddings[j]))[
                         :K
@@ -210,7 +222,6 @@ class DeepClusterV2Loss(ClassyLoss):
                 dist.broadcast(centroids, 0)
 
                 for n_iter in range(self.nmb_kmeans_iters + 1):
-
                     # E step
                     dot_products = torch.mm(
                         self.local_memory_embeddings[j], centroids.t()
@@ -222,10 +233,11 @@ class DeepClusterV2Loss(ClassyLoss):
                         break
                     # M step
                     where_helper = get_indices_sparse(assignments.cpu().numpy())
-                    counts = torch.zeros(K).to(device=self.device, non_blocking=True).int()
+                    counts = (
+                        torch.zeros(K).to(device=self.device, non_blocking=True).int()
+                    )
                     emb_sums = torch.zeros(K, self.embedding_dim).to(
-                        device=self.device,
-                        non_blocking=True
+                        device=self.device, non_blocking=True
                     )
                     for k in range(len(where_helper)):
                         if len(where_helper[k][0]) > 0:
@@ -235,8 +247,9 @@ class DeepClusterV2Loss(ClassyLoss):
                             )
                             counts[k] = len(where_helper[k][0])
 
-
-                    all_reduce_sum(counts) #performing sum reduction of tensor over all processes
+                    all_reduce_sum(
+                        counts
+                    )  # performing sum reduction of tensor over all processes
                     mask = counts > 0
                     all_reduce_sum(emb_sums)
                     centroids[mask] = emb_sums[mask] / counts[mask].unsqueeze(1)
@@ -264,15 +277,31 @@ class DeepClusterV2Loss(ClassyLoss):
             epoch = mantik.get_current_epoch()
             epoch_comp = epoch + 1
 
-            if epoch_comp == 1 or (epoch_comp <= 100 and epoch_comp % 25 == 0) or epoch_comp % 100 == 0:
-                logging.info("Saving clustering data on rank %s at epoch %s", get_rank(), epoch)
+            if (
+                epoch_comp == 1
+                or (epoch_comp <= 100 and epoch_comp % 25 == 0)
+                or epoch_comp % 100 == 0
+            ):
+                logging.info(
+                    "Saving clustering data on rank %s at epoch %s", get_rank(), epoch
+                )
 
-                centroids_last_iter = getattr(self, f"centroids{len(self.num_clusters) - 1}")
-                torch.save(centroids_last_iter, self._create_path("centroids.pt", epoch=epoch))
-                torch.save(self.assignments, self._create_path("assignments.pt", epoch=epoch))
-                torch.save(self.embeddings, self._create_path("embeddings.pt", epoch=epoch))
+                centroids_last_iter = getattr(
+                    self, f"centroids{len(self.num_clusters) - 1}"
+                )
+                torch.save(
+                    centroids_last_iter, self._create_path("centroids.pt", epoch=epoch)
+                )
+                torch.save(
+                    self.assignments, self._create_path("assignments.pt", epoch=epoch)
+                )
+                torch.save(
+                    self.embeddings, self._create_path("embeddings.pt", epoch=epoch)
+                )
                 torch.save(self.indexes, self._create_path("indexes.pt", epoch=epoch))
-                torch.save(self.distance, self._create_path("distances.pt", epoch=epoch))
+                torch.save(
+                    self.distance, self._create_path("distances.pt", epoch=epoch)
+                )
 
         logging.info(f"Rank: {get_rank()}, clustering of the memory bank done")
 

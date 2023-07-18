@@ -5,7 +5,7 @@ default_language_version:
 
 repos:
 -   repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v3.4.0
+    rev: v4.4.0
     hooks:
     -   id: trailing-whitespace
     -   id: check-ast
@@ -15,19 +15,23 @@ repos:
     -   id: end-of-file-fixer
 
 -   repo: https://github.com/psf/black
-    rev: 19.10b0 # Replace by any tag/version: https://github.com/psf/black/tags
+    rev: 23.7.0
     hooks:
       - id: black
         language_version: python3 # Should be a command that runs python3.6+
 
--   repo: https://gitlab.com/pycqa/flake8
-    rev: 3.9.0
+-   repo: https://github.com/pycqa/flake8
+    rev: 6.0.0
     hooks:
     -   id: flake8
-        args: ['--max-line-length=88', '--ignore=E501,E203,E266,W503,E741']
+        args: [
+          '--max-line-length=88',
+          '--ignore=E501,E203,E266,W503,E741',
+          '--per-file-ignores=__init__.py:F401'
+        ]
 
 - repo: https://github.com/pycqa/isort
-  rev: 5.8.0
+  rev: 5.12.0
   hooks:
     - id: isort
       name: isort (python)

@@ -27,7 +27,6 @@ from vissl.utils.test_utils import (
 class TestLayerMemoryTracking(unittest.TestCase):
     @gpu_test(gpu_count=1)
     def test_memory_tracking(self):
-
         # Create a model with a hierarchy of modules
         torch.manual_seed(0)
         model = nn.Sequential(

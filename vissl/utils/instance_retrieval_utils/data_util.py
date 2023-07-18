@@ -948,7 +948,6 @@ class CopyDaysDataset:
         # Calculate map for each query split
         results = {}
         for query_split in self.query_splits:
-
             # Get indeces of split queries.
             query_indeces = []
             for i, query_split_filename in enumerate(query_filenames):

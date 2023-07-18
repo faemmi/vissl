@@ -98,7 +98,6 @@ class TestExtractClusterWorkflow(unittest.TestCase):
 
     def run_cluster_assignment(self, with_fsdp: bool):
         with in_temporary_directory() as pretrain_dir:
-
             # Pre-train a SwAV model in order to get some weights
             pretrain_config = self._create_pretraining_config(with_fsdp=with_fsdp)
             run_integration_test(pretrain_config)

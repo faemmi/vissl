@@ -68,7 +68,6 @@ class MultiCropSimclrInfoNCECriterion(SimclrInfoNCECriterion):
     """
 
     def __init__(self, buffer_params, temperature: float, num_crops: int):
-
         self.num_crops = num_crops
         super(MultiCropSimclrInfoNCECriterion, self).__init__(
             buffer_params, temperature

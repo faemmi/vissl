@@ -25,7 +25,7 @@ config:
       BATCHSIZE_PER_REPLICA: 8  # number of unique samples in minibatch per gpu
       LABEL_TYPE: sample_index    # just an implementation detail. Label isn't used
       # Somehow the data loader wrapping in data/__init__.py#L218 (DataloaderAsyncGPUWrapper)
-      # causes the dataloader to return a tensor of 0s for the labels, 
+      # causes the dataloader to return a tensor of 0s for the labels,
       # which should actually return the sample indexes (`LABEL_TYPE`).
       # Hence, we manually set the target key sames to `data_idx` instead of `labels`.
       TARGET_KEY_NAMES: ["data_idx"]

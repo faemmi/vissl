@@ -9,17 +9,18 @@ Supports two engines: train and extract_features
 """
 
 import logging
-import time
 import os
-
 import tempfile
+import time
 from typing import Any, Callable, List
 
 import mlflow
 import torch
 import torch.multiprocessing
+from classy_vision.generic.distributed_util import get_rank, is_primary
 from iopath.common.file_io import g_pathmgr
-
+import vissl.utils.logger as _logger
+import vissl.utils.mantik as mantik
 from vissl.config import AttrDict
 from vissl.data.dataset_catalog import get_data_files
 from vissl.engines import run_engine
@@ -34,10 +35,6 @@ from vissl.utils.io import cleanup_dir, copy_data_to_local, makedir
 from vissl.utils.logger import setup_logging, shutdown_logging
 from vissl.utils.misc import get_dist_run_id
 from vissl.utils.slurm import get_node_id
-from classy_vision.generic.distributed_util import get_rank, is_primary
-import vissl.utils.mantik as mantik
-import vissl.utils.logger as _logger
-
 
 
 def _get_available_splits(cfg: AttrDict):
@@ -124,12 +121,12 @@ def launch_distributed(
                 "SLURM_NPROCS": os.getenv("SLURM_NPROCS"),
                 "SLURM_NTASKS": os.getenv("SLURM_NTASKS"),
                 "SLURM_JOB_GPUS": os.getenv("SLURM_JOB_GPUS"),
-            }
+            },
         )
 
         # Set run ID as env var for passing to all sub-processes
         run = mantik.call_mlflow_method(mlflow.active_run)
-        
+
         if run is not None:
             os.environ["MLFLOW_RUN_ID"] = run.info.run_id
 
@@ -197,7 +194,7 @@ def launch_distributed(
                 "n_gpus_total": world_size,
                 "checkpoint_folder": checkpoint_folder,
                 "output_dir": cfg.LOSS.deepclusterv2_loss.output_dir,
-            }
+            },
         )
 
     try:
@@ -229,14 +226,16 @@ def launch_distributed(
             )
 
     except (
-            KeyboardInterrupt, RuntimeError, torch.multiprocessing.ProcessRaisedException
+        KeyboardInterrupt,
+        RuntimeError,
+        torch.multiprocessing.ProcessRaisedException,
     ) as e:
         if mantik.tracking_enabled():
             with open(stderr_file, "a") as f:
                 f.write(str(e))
 
             mantik.call_mlflow_method(mlflow.log_text, str(e), "error.txt")
-        
+
             mantik.call_mlflow_method(mlflow.log_artifact, stderr_file)
             mantik.call_mlflow_method(mlflow.log_artifact, stdout_file)
 
@@ -259,7 +258,9 @@ def launch_distributed(
         mantik.call_mlflow_method(mlflow.log_metric, "total_runtime_ms", runtime)
 
         # The following files are saved to disk in `modified/losses/deepclusterv2_loss.py:233`
-        mantik.call_mlflow_method(mlflow.log_artifacts, cfg.LOSS.deepclusterv2_loss.output_dir)
+        mantik.call_mlflow_method(
+            mlflow.log_artifacts, cfg.LOSS.deepclusterv2_loss.output_dir
+        )
 
         mantik.call_mlflow_method(mlflow.log_artifact, stderr_file)
         mantik.call_mlflow_method(mlflow.log_artifact, stdout_file)

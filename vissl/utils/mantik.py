@@ -4,6 +4,7 @@ from typing import Callable
 
 import mlflow
 
+
 _TRACKING_ENV_VAR = "TRACK_TO_MANTIK"
 _CURRENT_EPOCH_ENV_VAR = "CURRENT_EPOCH"
 _CPU_USAGE_ENV_VAR = "CPU_USAGE_ENABLED"
@@ -32,16 +33,19 @@ def _get_required_env_var(name: str) -> int:
         raise RuntimeError(f"Environment variable {name} unset")
     return int(value)
 
+
 def set_cpu_usage() -> None:
     os.environ[_CPU_USAGE_ENV_VAR] = "True"
+
 
 def cpu_usage_enabled() -> bool:
     return True if os.getenv(_CPU_USAGE_ENV_VAR) == "True" else False
 
+
 def call_mlflow_method(func: Callable, *args, **kwargs):
     try:
         return func(*args, **kwargs)
-    except mlflow.exceptions.MlflowException as e:
+    except mlflow.exceptions.MlflowException:
         logging.exception(
             "Calling MLflow method %s with args %s and kwargs %s has failed",
             func,
@@ -49,5 +53,3 @@ def call_mlflow_method(func: Callable, *args, **kwargs):
             kwargs,
             exc_info=True,
         )
-
-

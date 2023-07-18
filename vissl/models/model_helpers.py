@@ -159,7 +159,6 @@ def convert_sync_bn(config, model):
     sync_bn_config = config.MODEL.SYNC_BN_CONFIG
 
     def get_group_size():
-
         world_size = config.DISTRIBUTED.NUM_PROC_PER_NODE * config.DISTRIBUTED.NUM_NODES
         if sync_bn_config["GROUP_SIZE"] > 0:
             # if the user specifies group_size to create, we use that.

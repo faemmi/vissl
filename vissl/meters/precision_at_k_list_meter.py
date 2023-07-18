@@ -8,7 +8,7 @@ from typing import List, Union
 
 import torch
 from classy_vision.generic.util import is_pos_int
-from classy_vision.meters import PrecisionAtKMeter, ClassyMeter, register_meter
+from classy_vision.meters import ClassyMeter, PrecisionAtKMeter, register_meter
 from vissl.config import AttrDict
 
 
@@ -163,7 +163,7 @@ class PrecisionAtKListMeter(ClassyMeter):
             model_output = [model_output]
         assert isinstance(model_output, list)
         assert len(model_output) == self._num_meters
-        for (meter, output) in zip(self._meters, model_output):
+        for meter, output in zip(self._meters, model_output):
             meter.update(output, target)
 
     def reset(self):

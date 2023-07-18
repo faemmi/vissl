@@ -76,8 +76,8 @@ const siteConfig = {
 
   // Google analytics
   gaTrackingId: 'UA-172675973-1',
-  
-  wrapPagesHTML: true,  
+
+  wrapPagesHTML: true,
 
   // For sites with a sizable amount of content, set collapsible to true.
   // Expand/collapse the links and subcategories under categories.

@@ -454,8 +454,8 @@ def compute_l2_distance_matrix(features_queries, features_dataset):
     """
     Computes the l2 distance of every query to every database image.
     """
-    sx = np.sum(features_queries ** 2, axis=1, keepdims=True)
-    sy = np.sum(features_dataset ** 2, axis=1, keepdims=True)
+    sx = np.sum(features_queries**2, axis=1, keepdims=True)
+    sy = np.sum(features_dataset**2, axis=1, keepdims=True)
 
     return np.sqrt(-2 * features_queries.dot(features_dataset.T) + sx + sy.T)
 
@@ -554,7 +554,6 @@ def instance_retrieval_test(args, cfg):
         # Train PCA on the train features
         pca_out_fname = None
         if temp_dir:
-
             pca_out_fname = f"{temp_dir}/{train_dataset_name}_S{resize_img}_PCA.pickle"
         if pca_out_fname and g_pathmgr.exists(pca_out_fname):
             logging.info("Loading PCA...")

@@ -12,6 +12,7 @@ from classy_vision.dataset.transforms import (
 from classy_vision.dataset.transforms.classy_transform import ClassyTransform
 from vissl.utils.misc import is_augly_available
 
+
 if is_augly_available():
     import augly.image as imaugs  # NOQA
 

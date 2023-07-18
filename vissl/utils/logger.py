@@ -6,12 +6,13 @@
 import atexit
 import functools
 import logging
+import os
 import subprocess
 import sys
-import os
 
 from iopath.common.file_io import g_pathmgr
 from vissl.utils.io import makedir
+
 
 LOG_LEVEL_ENV_VAR = "LOG_LEVEL"
 _LOG_LEVEL = os.getenv(LOG_LEVEL_ENV_VAR, "INFO")

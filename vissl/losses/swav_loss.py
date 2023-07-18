@@ -182,7 +182,6 @@ class SwAVCriterion(nn.Module):
 
         # 2 big crops are normally used for the assignment
         for i, crop_id in enumerate(self.crops_for_assign):
-
             # Compute the target assignments, taking crop_id as the features
             # used to compute the codes to which other crops will be mapped
             with torch.no_grad():

@@ -14,8 +14,8 @@ from torchvision.models.resnet import BasicBlock, Bottleneck
 from vissl.config import AttrDict
 from vissl.data.collators.collator_helper import MultiDimensionalTensor
 from vissl.models.model_helpers import (
-    _get_norm,
     Flatten,
+    _get_norm,
     get_trunk_forward_outputs,
     get_tunk_forward_interpolated_outputs,
     transform_model_input_data_type,
@@ -123,7 +123,7 @@ class ResNeXt(nn.Module):
                 raise ValueError(
                     f"Invalid value for config.MODEL.INPUT_TYPE ({input_type}), "
                     f"int, {allowed_values}"
-                )
+                ) from e
 
         model_conv1 = nn.Conv2d(
             self.input_channels,

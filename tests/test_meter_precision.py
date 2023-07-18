@@ -4,9 +4,9 @@
 # LICENSE file in the root directory of this source tree.
 
 import torch
-import vissl.meters  # noqa: F401,F811
 from classy_vision.meters import build_meter
 from meter_test_utils import ClassificationMeterTest
+import vissl.meters  # noqa: F401,F811
 from vissl.meters.precision_at_k_list_meter import PrecisionAtKListMeter
 
 
