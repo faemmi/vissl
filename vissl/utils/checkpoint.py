@@ -658,7 +658,7 @@ def print_loaded_dict_info(
             continue
         if layername in state_dict:
             if (
-                not ("heads" in layername)
+                "heads" not in layername
                 or (
                     "heads" in layername
                     and not model_config.FEATURE_EVAL_SETTINGS.EVAL_MODE_ON
@@ -858,7 +858,7 @@ def init_model_from_consolidated_weights(
             # if we are evaluating the heads as well or not. If not, we don't initialize
             # the heads. Otherwise we initialize the heads.
             if (
-                not ("heads" in layername)
+                "heads" not in layername
                 or (
                     "heads" in layername
                     and not config.MODEL.FEATURE_EVAL_SETTINGS.EVAL_MODE_ON
