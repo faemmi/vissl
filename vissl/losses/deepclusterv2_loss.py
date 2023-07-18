@@ -318,6 +318,11 @@ class DeepClusterV2Loss(ClassyLoss):
                     name=f"epoch-{epoch}-embeddings",
                     output_dir=self.plots_dir,
                 )
+                plotting.deepclusterv2.assignments.plot_abundance(
+                    assignments=self.assignments[-1],
+                    name=f"epoch-{epoch}-assignments-abundance",
+                    output_dir=self.plots_dir,
+                )
 
                 if mantik.tracking_enabled():
                     n_unassigned_samples = _calculate_number_of_unassigned_samples(

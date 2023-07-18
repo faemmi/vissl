@@ -1,5 +1,12 @@
-ASSIGNMENTS = {
+from typing import List
+
+import numpy as np
+import torch
+
+
+LABEL_COLORS = {
     -100: "#000000",
+    -1: "#000000",
     0: "#FFFF00",
     1: "#1CE6FF",
     2: "#FF34FF",
@@ -39,4 +46,14 @@ ASSIGNMENTS = {
     36: "#0AA6D8",
     37: "#013349",
     38: "#00846F",
+    39: "#DE34EB",
+    40: "#EB9834",
 }
+
+
+def create_colors_for_assigments(assignments: torch.Tensor) -> List[str]:
+    return [LABEL_COLORS[int(i)] for i in assignments]
+
+
+def create_colors_for_labels(labels: np.ndarray) -> List[str]:
+    return [LABEL_COLORS[label] for label in labels]

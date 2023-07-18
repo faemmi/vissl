@@ -1,7 +1,7 @@
 import logging
 import pathlib
 import time
-from typing import Iterator, List, Tuple
+from typing import Iterator, Tuple
 
 import matplotlib.pyplot as plt
 import openTSNE
@@ -28,11 +28,12 @@ def plot_embeddings_using_tsne(
     logging.info("Creating plot for embeddings")
 
     for i in range(embeddings.shape[0]):
-        fig = plt.figure()
-        ax = fig.add_subplot()
+        _, ax = plt.subplots()
+
+        ax.set_title(f"Embeddings for crops {i}")
 
         x, y = _fit_tsne(embeddings[i])
-        colors = _create_colors_for_assigments(assignments)
+        colors = _colors.create_colors_for_assigments(assignments)
 
         ax = ax.scatter(x, y, c=colors, s=1)
 
@@ -50,7 +51,3 @@ def _fit_tsne(embeddings: torch.Tensor) -> Iterator[Tuple[float, float]]:
     logging.info("Finished fitting t-SNE in %s seconds", time.time() - start)
 
     return zip(*result)
-
-
-def _create_colors_for_assigments(assignments: torch.Tensor) -> List[str]:
-    return [_colors.ASSIGNMENTS[int(i)] for i in assignments]
