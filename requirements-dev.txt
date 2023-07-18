@@ -1,0 +1,15 @@
+pytest
+pytest-cov
+pytest-custom-exit-code
+black==19.3b0
+sphinx
+isort==5.7.0
+flake8==3.8.1
+flake8-bugbear
+flake8-comprehensions
+pre-commit
+nbconvert
+bs4
+faiss-gpu
+pycocotools>=2.0.1
+tensorboard>=1.15

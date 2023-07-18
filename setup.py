@@ -10,8 +10,8 @@ import pkg_resources
 from setuptools import find_namespace_packages, find_packages, setup
 
 
-def fetch_requirements():
-    with pathlib.Path("requirements.txt").open() as requirements_txt:
+def fetch_requirements(name):
+    with pathlib.Path(name).open() as requirements_txt:
         install_requires = [
             str(requirement)
             for requirement in pkg_resources.parse_requirements(requirements_txt)
@@ -44,23 +44,8 @@ setup(
     description="VISSL is an extensible, modular and scalable library for "
     "SOTA Self-Supervised Learning with images.",
     packages=packages,
-    install_requires=fetch_requirements(),
+    install_requires=fetch_requirements("requirements.txt"),
     include_package_data=True,
     python_requires=">=3.6.2",
-    extras_require={
-        "dev": [
-            "black==19.3b0",
-            "sphinx",
-            "isort==5.7.0",
-            "flake8==3.8.1",
-            "flake8-bugbear",
-            "flake8-comprehensions",
-            "pre-commit",
-            "nbconvert",
-            "bs4",
-            "faiss-gpu",
-            "pycocotools>=2.0.1",
-            "tensorboard>=1.15",
-        ]
-    },
+    extras_require={"dev": fetch_requirements("requirements-dev.txt")},
 )
