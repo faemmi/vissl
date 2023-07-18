@@ -23,11 +23,11 @@ jobs:
           pip install pytest
       - name: Run tests
         run: |
-          pytest
-            --cov=vissl
-            --cov-report term
-            --cov-report html:./htmlcov
-            --suppress-no-test-exit-code
-            --junitxml=./report/pytest.xml
+          pytest \
+            --cov=vissl \
+            --cov-report term \
+            --cov-report html:./htmlcov \
+            --suppress-no-test-exit-code \
+            --junitxml=./report/pytest.xml \
             tests/unit
 
