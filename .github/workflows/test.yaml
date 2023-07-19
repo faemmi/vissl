@@ -1,9 +1,9 @@
-name: unit test
+name: test
 
 on: [push]
 
 jobs:
-  test unit:
+  test-unit:
 
     runs-on: ubuntu-latest
     strategy:
@@ -32,7 +32,7 @@ jobs:
             --junitxml=./report/pytest.xml \
             tests/unit
 
-  test train:
+  test-train:
 
     runs-on: ubuntu-latest
     strategy:
