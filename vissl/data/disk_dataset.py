@@ -5,6 +5,7 @@
 
 import logging
 import os
+import pathlib
 import time
 
 import mlflow
@@ -15,6 +16,9 @@ from torchvision.datasets import ImageFolder
 import vissl.utils.io as io
 import vissl.utils.mantik as mantik
 from vissl.data.data_helper import QueueDataset, get_mean_image
+
+
+VISSL_ROOT_DIR = pathlib.Path(__file__).parent / "../../"
 
 
 class DiskImageDataset(QueueDataset):
@@ -61,6 +65,10 @@ class DiskImageDataset(QueueDataset):
         if data_source == "disk_filelist":
             assert PathManager.isfile(path), f"File {path} does not exist"
         elif data_source == "disk_folder":
+            # Allow data paths to be relative to root dir of library
+            if not pathlib.Path(path).is_absolute():
+                path = (VISSL_ROOT_DIR / path).as_posix()
+
             assert PathManager.isdir(path), f"Directory {path} does not exist"
         self.cfg = cfg
         self.split = split
