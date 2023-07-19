@@ -1,4 +1,9 @@
 {
+  "ci_test_dataset":
+  {
+    "train": ["tests/test_data/deepclusterv2", ""],
+    "val": ["tests/test_data/deepclusterv2", ""]
+  },
   "local_test_dataset":
   {
     "train": ["/home/fabian/data/daily", ""],

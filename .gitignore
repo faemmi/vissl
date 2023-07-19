@@ -15,6 +15,7 @@ __pycache__/
 *.txt
 !requirements.txt
 !requirements-dev.txt
+!requirements-cpu.txt
 
 # generated folders
 /datasets
@@ -97,6 +98,7 @@ website/pages/tutorials/*
 *-checkpoint.ipynb
 **/.ipynb_checkpoints
 **/.ipynb_checkpoints/**
+results/
 
 # Configs for local development
 configs/config/config_local/*
