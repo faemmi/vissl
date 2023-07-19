@@ -15,4 +15,4 @@ opentsne==1.0.0
 opencv-python
 fairscale==0.4.6
 numpy==1.21.0
-https://github.com/facebookresearch/ClassyVision/tarball/4785d5ee19d3bcedd5b28c1eb51ea1f59188b54d \
+https://github.com/facebookresearch/ClassyVision/tarball/4785d5ee19d3bcedd5b28c1eb51ea1f59188b54d
