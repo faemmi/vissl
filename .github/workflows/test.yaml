@@ -3,8 +3,7 @@ name: test
 on: [push]
 
 jobs:
-  test-unit:
-
+  install:
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -22,18 +21,9 @@ jobs:
           pip install -e .
           pip install -r requirements-cpu.txt
           pip install pytest pytest-cov pytest-custom-exit-code
-      - name: Run tests
-        run: |
-          pytest \
-            --cov=vissl \
-            --cov-report term \
-            --cov-report html:./htmlcov \
-            --suppress-no-test-exit-code \
-            --junitxml=./report/pytest.xml \
-            tests/unit
 
-  test-train:
-
+  test-unit:
+    needs: install
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -45,7 +35,33 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
           cache: 'pip'
+      - name: Install pytest
+        run: |
+          pip install pytest pytest-cov pytest-custom-exit-code
       - name: Run tests
+        run: |
+          pytest \
+            --cov=vissl \
+            --cov-report term \
+            --cov-report html:./htmlcov \
+            --suppress-no-test-exit-code \
+            --junitxml=./report/pytest.xml \
+            tests/unit
+
+  test-train:
+    needs: install
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.8"]
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      - name: Run training
         run: |
           python tools/run_distributed_engines.py \
             config=local \
