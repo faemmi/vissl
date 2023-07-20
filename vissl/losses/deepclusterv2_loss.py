@@ -271,7 +271,8 @@ class DeepClusterV2Loss(ClassyLoss):
 
                 # gather the assignments
                 assignments_all = gather_from_all(assignments)
-                embeddings_all = gather_from_all(self.local_memory_embeddings)
+                # To gather embeddings, make sure to gather using ``self.local_memory_embeddings[j]``
+                embeddings_all = gather_from_all(self.local_memory_embeddings[j])
                 indexes_all = gather_from_all(self.local_memory_index)
                 distance_all = gather_from_all(distance)
 
