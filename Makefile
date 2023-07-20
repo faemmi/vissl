@@ -6,8 +6,8 @@ install:
 install-cpu: install
 	pip install -r requirements-cpu.txt
 
-install-dev: install
-	pip install -r requirements-dev.txt
+install-dev:
+	pip install -e ".[dev]"
 
 test:
 	pytest tests/unit

@@ -29,7 +29,7 @@ def get_version():
     return version
 
 
-packages = find_packages(exclude=("tests",)) + find_namespace_packages(
+packages = find_packages(include=["vissl.*", "configs.*"]) + find_namespace_packages(
     include=["hydra_plugins.*"]
 )
 
