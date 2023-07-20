@@ -333,40 +333,41 @@ class DeepClusterV2Loss(ClassyLoss):
                     self.distance, self._create_path("distances.pt", epoch=epoch)
                 )
 
-                plotting.deepclusterv2.embeddings.plot_embeddings_using_tsne(
-                    embeddings=self.embeddings[-1],
-                    assignments=self.assignments[-1],
-                    name=f"epoch-{epoch}-embeddings",
-                    output_dir=self.plots_dir,
-                )
-                plotting.deepclusterv2.assignments.plot_abundance(
-                    assignments=self.assignments[-1],
-                    name=f"epoch-{epoch}-assignments-abundance",
-                    output_dir=self.plots_dir,
-                )
-                plotting.deepclusterv2.assignments.plot_appearance_per_week(
-                    assignments=self.assignments[-1],
-                    name=f"epoch-{epoch}-appearance-per-week",
-                    output_dir=self.plots_dir,
-                )
+                if get_rank() == 0:
+                    plotting.deepclusterv2.embeddings.plot_embeddings_using_tsne(
+                        embeddings=self.embeddings[-1],
+                        assignments=self.assignments[-1],
+                        name=f"epoch-{epoch}-embeddings",
+                        output_dir=self.plots_dir,
+                    )
+                    plotting.deepclusterv2.assignments.plot_abundance(
+                        assignments=self.assignments[-1],
+                        name=f"epoch-{epoch}-assignments-abundance",
+                        output_dir=self.plots_dir,
+                    )
+                    plotting.deepclusterv2.assignments.plot_appearance_per_week(
+                        assignments=self.assignments[-1],
+                        name=f"epoch-{epoch}-appearance-per-week",
+                        output_dir=self.plots_dir,
+                    )
 
-                if mantik.tracking_enabled():
-                    n_unassigned_samples = _calculate_number_of_unassigned_samples(
-                        self.assignments[-1],
-                    )
-                    mantik.call_mlflow_method(
-                        mlflow.log_metric,
-                        "unassigned_samples",
-                        n_unassigned_samples,
-                    )
-                    percent_unassigned_samples = (
-                        n_unassigned_samples / self.assignments.shape[-1]
-                    )
-                    mantik.call_mlflow_method(
-                        mlflow.log_metric,
-                        "unassigned_samples_percent",
-                        percent_unassigned_samples,
-                    )
+                    if mantik.tracking_enabled():
+                        n_unassigned_samples = _calculate_number_of_unassigned_samples(
+                            self.assignments[-1],
+                        )
+                        mantik.call_mlflow_method(
+                            mlflow.log_metric,
+                            "unassigned_samples",
+                            n_unassigned_samples,
+                        )
+                        percent_unassigned_samples = (
+                            n_unassigned_samples / self.assignments.shape[-1]
+                        )
+                        mantik.call_mlflow_method(
+                            mlflow.log_metric,
+                            "unassigned_samples_percent",
+                            percent_unassigned_samples,
+                        )
 
         logging.info(f"Rank: {get_rank()}, clustering of the memory bank done")
 
