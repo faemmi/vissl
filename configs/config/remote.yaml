@@ -66,7 +66,9 @@ config:
       MMAP_MODE: True # whether to memory map the input data
       COPY_TO_LOCAL_DISK: False # whether the data specified (whether file list or directory) should be copied locally on the machine where training is happening.
       COPY_DESTINATION_DIR: /tmp/imagenet1k/ # COPY_TO_LOCAL_DISK is set to FALSE
-      DROP_LAST: True
+      # Don't drop samples. This can be done to always process the same amount of samples on every GPU.
+      # However, this causes some samples to remain unassigned.
+      DROP_LAST: False
   TRAINER:
     TRAIN_STEP_NAME: standard_train_step
   METERS:
