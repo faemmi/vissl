@@ -7,7 +7,7 @@ import os
 import pathlib
 
 import pkg_resources
-from setuptools import find_namespace_packages, find_packages, setup
+from setuptools import find_namespace_packages, setup
 
 
 def fetch_requirements(name):
@@ -29,10 +29,7 @@ def get_version():
     return version
 
 
-packages = find_packages(include=["vissl.*", "configs.*"]) + find_namespace_packages(
-    include=["hydra_plugins.*"]
-)
-
+packages = find_namespace_packages(include=["vissl.*", "configs.*", "hydra_plugins.*"])
 
 setup(
     name="vissl",
