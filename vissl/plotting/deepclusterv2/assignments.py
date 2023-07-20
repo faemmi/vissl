@@ -44,7 +44,7 @@ def _plot_histogram(
 ) -> Tuple[plt.Figure, plt.Axes]:
     _, ax = plt.subplots()
 
-    _, _, patches = ax.hist(assignments, bins=bins, density=density)
+    _, _, patches = ax.hist(assignments.cpu(), bins=bins, density=density)
 
     ax.set_title(f"{y_label.capitalize()} per cluster")
 
@@ -79,7 +79,7 @@ def plot_appearance_per_week(
         "Custom cmap", colors, len(colors)
     )
 
-    pcolormesh = ax.pcolormesh(reshaped, cmap=cmap)
+    pcolormesh = ax.pcolormesh(reshaped.cpu(), cmap=cmap)
     fig.colorbar(pcolormesh, ax=ax, label="Label")
 
     ax.set_title("Cluster appearance per day of week")

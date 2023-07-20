@@ -46,7 +46,7 @@ def _fit_tsne(embeddings: torch.Tensor) -> Iterator[Tuple[float, float]]:
     start = time.time()
     logging.info("Fitting t-SNE")
 
-    result = openTSNE.TSNE().fit(embeddings)
+    result = openTSNE.TSNE().fit(embeddings.cpu())
 
     logging.info("Finished fitting t-SNE in %s seconds", time.time() - start)
 
