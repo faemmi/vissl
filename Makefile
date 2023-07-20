@@ -1,5 +1,14 @@
 OUTPUT_DIR = "$(HOME)/data/deepclusterv2"
 
+install:
+	pip install -e .
+
+install-cpu: install
+	pip install -r requirements-cpu.txt
+
+install-dev: install
+	pip install -r requirements-dev.txt
+
 test:
 	pytest tests/unit
 
@@ -14,4 +23,4 @@ train:
 		config.LOSS.deepclusterv2_loss.output_dir=$(OUTPUT_DIR) \
 		config.TRACK_TO_MANTIK=False
 
-.PHONY: test
+.PHONY: install install-cpu test train
