@@ -6,6 +6,7 @@
 import collections
 import logging
 import os
+import pathlib
 import random
 import sys
 import tempfile
@@ -230,9 +231,27 @@ def get_json_data_catalog_file():
     Searches for the dataset_catalog.json file that contains information about
     the dataset paths if set by user.
     """
-    default_path = pkg_resources.resource_filename(
-        "configs", "config/dataset_catalog.json"
-    )
+    relative_file_path = "config/dataset_catalog.json"
+    try:
+        # Catch type error when configs package not correctly installed.
+        #
+        # vissl/utils/misc.py:233: in get_json_data_catalog_file
+        #    default_path = pkg_resources.resource_filename(
+        # ../../../.virtualenvs/.venv/lib/python3.8/site-packages/pkg_resources/__init__.py:1130: in resource_filename
+        #    return get_provider(package_or_requirement).get_resource_filename(
+        # ../../../.virtualenvs/.venv/lib/python3.8/site-packages/pkg_resources/__init__.py:349: in get_provider
+        #    return _find_adapter(_provider_factories, loader)(module)
+        # ../../../.virtualenvs/.venv/lib/python3.8/site-packages/pkg_resources/__init__.py:1379: in __init__
+        #    self.module_path = os.path.dirname(getattr(module, '__file__', ''))
+        # /opt/hostedtoolcache/Python/3.8.17/x64/lib/python3.8/posixpath.py:152: in dirname
+        #    p = os.fspath(p)
+        # E   TypeError: expected str, bytes or os.PathLike object, not NoneType
+        default_path = pkg_resources.resource_filename("configs", relative_file_path)
+    except TypeError:
+        default_path = (
+            pathlib.Path(__file__).parent / f"../../{relative_file_path}"
+        ).as_posix()
+
     json_catalog_path = get_json_catalog_path(default_path)
 
     return json_catalog_path
