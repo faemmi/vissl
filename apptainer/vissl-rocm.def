@@ -1,0 +1,76 @@
+Bootstrap: docker
+From: rocm/dev-ubuntu-20.04:5.2-complete
+Stage: builder
+
+%post -c /bin/bash
+    export ROCM_VERSION=5.2
+    export PYTHON_VERSION=3.8
+    export PYTORCH_VERSION=1.13.1
+    export TORCHVISION_VERSION=0.14.1
+    export VISSL_VERSION=0.1.6
+    export PATH=/usr/local/bin:/opt/conda/bin:${PATH}
+
+    # Install common dependencies
+    # See https://stackoverflow.com/questions/44331836/apt-get-install-tzdata-noninteractive
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends \
+      python3.8 \
+      python3.8-venv \
+      python3.8-dev \
+      git
+
+    # Install VISSL
+    # Clone VISSL repository
+    git clone --recursive https://github.com/faemmi/vissl.git /opt/vissl
+    cd /opt/vissl
+    git checkout v${VISSL_VERSION}
+    git checkout -b v${VISSL_VERSION}
+
+    python3.8 -m venv /venv
+    . /venv/bin/activate
+    pip install --upgrade pip
+    pip install torch==${PYTORCH_VERSION} torchvision==${TORCHVISION_VERSION} --extra-index-url https://download.pytorch.org/whl/rocm${ROCM_VERSION}
+    pip install --no-cache-dir -e .
+
+
+Bootstrap: docker
+From: rocm/dev-ubuntu-20.04:5.2-complete
+Stage: final
+
+%files from builder
+    /venv /venv
+    /opt/vissl /opt/vissl
+
+%environment
+    export PATH=/usr/local/bin:/venv/bin:${PATH}
+
+%post
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends \
+      python${PYTORCH_VERSION} \
+      python${PYTHON_VERSION}-dev \
+      python3-opencv
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+%test
+    export PATH=/usr/local/bin:/venv/bin:${PATH}
+    which python
+    python --version
+    python -c 'import torch, vissl, cv2'
+
+%runscript
+    echo "[$(date)] Running VISSL"
+    echo "Arguments: $*"
+    echo "Running command"
+    exec "$@"
+
+%labels
+    Author Fabian Emmerich
+    Version v1.6.0-rocm5.2-py3.8
+
+%help
+    Provides the VISSL library and all required dependencies.
+    The git repository is located at `/opt/vissl` and installed in editable mode.

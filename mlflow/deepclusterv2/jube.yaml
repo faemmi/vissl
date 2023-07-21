@@ -1,0 +1,446 @@
+name:    ap6
+outpath: ap6-run
+comment: MAELSTROM AP6 benchmark jube script
+
+parameterset:
+  - name: trainingParameters
+    parameter:
+      - name: epochs
+        tag: "!test"
+        type: int
+        _: 100
+      - name: epochs
+        tag: e4+!test
+        type: int
+        _: 50
+      - name: epochs
+        tag: test
+        type: int
+        _: 1
+      - name: lengths
+        type: text
+        separator: |
+        _: >
+           $$(
+           if [ "$epochs" -gt "999" ]; then
+             echo "[0.01,0.99]";
+           elif [ "$epochs" -gt "799" ]; then
+             echo "[0.0125,0.9875]";
+           elif [ "$epochs" -gt "599" ]; then
+             echo "[0.0166667,0.9833333]";
+           elif [ "$epochs" -gt "499" ]; then
+             echo "[0.02,0.98]";
+           elif [ "$epochs" -gt "399" ]; then
+             echo "[0.025,0.975]";
+           elif [ "$epochs" -gt "101" ]; then
+             echo "[0.05,0.95]";
+           elif [ "$epochs" -gt "5" ]; then
+             echo "[0.1,0.9]";
+           elif [ "$epochs" -gt "2" ]; then
+             echo "[0.002563,0.997437]";
+           elif [ "$epochs" -gt "1" ]; then
+             echo "[0.00641,0.99359]";
+           else
+             echo "[0.0128,0.9872]";
+           fi
+           )
+      - name: dataset
+        tag: (jwc|jwb)+test
+        _: "[remote_dataset_jsc_hourly]"
+      - name: dataset
+        tag: (jwc|jwb)+!test
+        _: "[remote_dataset_jsc_hourly]"
+      - name: dataset
+        tag: e4+test
+        _: "[remote_dataset_e4_daily]"
+      - name: dataset
+        tag: e4+!test
+        _: "[remote_dataset_e4_hourly]"
+  - name: globalParameters
+    parameter:
+      - name: modules
+        tag: jwb|jwc
+        mode: text
+        _: module load Apptainer-Tools/2023
+      - name: modules
+        tag: e4
+        mode: text
+        _: module load go-1.19/singularity-3.10.2
+      - name: modules
+        tag: e4+amd
+        mode: text
+        separator: |
+        _: >
+           module load go-1.19/singularity-3.10.2;
+           module load amd/rocm-5.2.1
+      - name: systemname
+        tag: jwc
+        _: jwc
+      - name: systemname
+        tag: jwb
+        _: jwb
+      - name: systemname
+        tag: e4
+        _: e4
+  - name: executeset
+    init_with: platform.xml
+  - name: systemParameter
+    init_with: platform.xml
+    parameter:
+      - name: job_name
+        _: $jube_benchmark_name-$jube_benchmark_padid-$jube_wp_padid-$jube_step_name
+      - name: nodes
+        _: 1
+      - name: nodes
+        tag: (jwc|jwb)+!test
+        _: "1,2,4"
+      - name: nodes
+        tag: e4+!test
+        _: "1,2"
+      - name: gpus
+        _: 1
+      - name: gpus
+        tag: (jwc|jwb)+test
+        _: 4
+      - name: gpus
+        tag: (jwc|jwb)+!test
+        _: 4
+      - name: gpus
+        tag: e4+(t-gpu-a100|t-gpu-v100|a-gpu-mi100)+!test
+        _: "1,2"
+      - name: gpus
+        tag: e4+i-gpu-a100+!test
+        _: "1"
+      - name: memory
+        _: ""
+      - name: memory
+        tag: e4
+        _: --mem=128Gb
+      - name: timelimit
+        tag: "!test"
+        _: "06:00:00"
+      - name: timelimit
+        tag: test
+        _: "02:00:00"
+      - name: account
+        tag: jwb|jwc
+        _: deepacf
+      - name: account
+        tag: e4
+        _: maelstrom
+      - name: queue
+        tag: jwb+!test
+        _: booster
+      - name: queue
+        tag: jwb+test
+        _: develbooster
+      - name: queue
+        tag: jwc+!test
+        _: gpus
+      - name: queue
+        tag: jwc+test
+        _: develgpus
+      - name: queue
+        tag: e4+test
+        _: i-gpu-a100
+      - name: queue
+        tag: e4+intel
+        _: i-gpu-a100
+      - name: queue
+        tag: e4+amd
+        _: a-gpu-mi100
+      - name: queue
+        tag: e4+arm
+        _: t-gpu-a100
+      - name: queue
+        tag: e4+arm+v100
+        _: t-gpu-v100
+      - name: gres
+        tag: jwc|jwb|e4
+        _: gpu:$gpus
+      - name: node_name
+        tag: jwc|jwb
+        _: $${SLURMD_NODENAME}i
+      - name: node_name
+        tag: e4
+        _: $${SLURMD_NODENAME}.e4red
+      - name: run_id
+        mode: text
+        _: $$(if [ $nodes -gt "1" ]; then echo $node_name:29500; else echo localhost:29500; fi)
+      - name: base_dir
+        tag: jwc|jwb
+        _: /p/scratch/deepacf/maelstrom/emmerich1/jube-benchmarks/$job_name
+      - name: base_dir
+        tag: e4
+        _: /scratch/femmerich/jube-benchmarks/$job_name
+      - name: checkpoints_dir
+        _: $base_dir/checkpoints
+      - name: tensorboard_dir
+        _: $base_dir/tensorboard
+      - name: tmp_data_dir
+        _: $base_dir/tmp
+      - name: preprocess
+        mode: text
+        separator: |
+        _: >
+           $modules;
+           mkdir -p ${base_dir} ${checkpoints_dir} ${tensorboard_dir} ${tmp_data_dir};
+           module load Stages/2023  GCCcore/.11.3.0 Python/3.10.4;
+           source /p/project/deepacf/maelstrom/emmerich1/venvs/mantik/bin/activate;
+           source /p/home/jusers/emmerich1/juwels/code/a6/mantik.env > /dev/null 2>&1;
+           eval $(mantik init);
+           unset MANTIK_USERNAME;
+           unset MANTIK_PASSWORD;
+           export LOG_TO_MANTIK="True";
+      - name: preprocess
+        tag: e4
+        mode: text
+        separator: |
+        _: >
+           $modules;
+           mkdir -p ${base_dir} ${checkpoints_dir} ${tensorboard_dir} ${tmp_data_dir};
+           bash /opt/share/scripts/powerdiscovery/getpower_local.sh 21600 > $jube_wp_abspath/consumption.log 2>&1 &
+           GETPOWER_PID=$!;
+      - name: postprocess
+        _: ""
+      - name: postprocess
+        tag: e4
+        _: kill $$GETPOWER_PID
+      - name: executable
+        _: apptainer
+      - name: executable
+        tag: e4
+        _: singularity
+      - name: repo_dir
+        tag: jwc|jwb
+        _: /p/home/jusers/emmerich1/juwels/code/a6/mlflow/deepclusterv2
+      - name: repo_dir
+        tag: e4
+        _: /home/femmerich/code/a6/mlflow/deepclusterv2
+      - name: image_path
+        tag: jwc|jwb
+        _: /p/project/deepacf/maelstrom/emmerich1/vissl.sif
+      - name: image_path
+        tag: e4
+        _: /scratch/femmerich/vissl.sif
+      - name: image_path
+        tag: e4+amd
+        _: /scratch/femmerich/vissl-rocm.sif
+      - name: gpu_bind
+        _: --nv
+      - name: gpu_bind
+        tag: amd
+        _: --rocm
+      - name: rocm_args
+        _: ""
+      - name: rocm_args
+        tag: amd
+        _: "config.OPTIMIZER.use_larc=False config.MODEL.AMP_PARAMS.USE_AMP=False"
+      - name: additional_args
+        tag: jwc|jwb
+        mode: text
+        _: >
+           -B /p/home:/p/home
+           -B /p/project:/p/project
+           -B /p/scratch:/p/scratch
+           -B /p/cscratch:/p/cscratch
+           -B /p/largedata:/p/largedata
+           -B /p/largedata2:/p/largedata2
+           -B /p/fastdata:/p/fastdata
+           --contain
+      - name: additional_args
+        tag: e4
+        mode: text
+        separator: |
+        _: >
+           -B /data:/data
+           -B /scratch:/scratch
+           --contain
+      - name: additional_args
+        tag: e4+amd
+        mode: text
+        separator: |
+        _: >
+           -B /data:/data
+           -B /scratch:/scratch
+           -B /usr/bin/hipconfig.pl:/usr/bin/hipconfig.pl
+      - name: args_exec
+        mode: text
+        separator: |
+        _: >
+           run
+           ${additional_args}
+           -B ${repo_dir}/configs:/opt/vissl/configs
+           -B ${repo_dir}/modified/data/disk_dataset.py:/opt/vissl/vissl/data/disk_dataset.py
+           -B ${repo_dir}/modified/hooks/log_hooks.py:/opt/vissl/vissl/hooks/log_hooks.py
+           -B ${repo_dir}/modified/losses/deepclusterv2_loss.py:/opt/vissl/vissl/losses/deepclusterv2_loss.py
+           -B ${repo_dir}/modified/utils/distributed_launcher.py:/opt/vissl/vissl/utils/distributed_launcher.py
+           ${gpu_bind}
+           ${image_path}
+           python /opt/vissl/tools/run_distributed_engines.py
+           config=remote
+           config.DISTRIBUTED.NUM_NODES=${nodes}
+           config.DISTRIBUTED.NUM_PROC_PER_NODE=${gpus}
+           config.DISTRIBUTED.RUN_ID=${run_id}
+           config.CHECKPOINT.DIR=${checkpoints_dir}
+           config.DATA.TRAIN.COPY_DESTINATION_DIR=${tmp_data_dir}
+           config.HOOKS.TENSORBOARD_SETUP.LOG_DIR=${tensorboard_dir}
+           config.OPTIMIZER.num_epochs=${epochs}
+           config.DATA.TRAIN.DATASET_NAMES=${dataset}
+           config.LOSS.deepclusterv2_loss.output_dir=${base_dir}
+           ${rocm_args}
+           config.OPTIMIZER.param_schedulers.lr.lengths="[0.00641,0.99359]"
+#config.OPTIMIZER.param_schedulers.lr.lengths=$${LENGTHS}
+# Note: the lengths arg must be last since it will contain a newline due to the parsing
+
+patternset:
+   - name: perf_patterns
+     pattern:
+      - name: epoch
+        type: int
+        _: "epoch:\\s+($jube_pat_nint)"
+      - name: epoch_time
+        type: int
+        _: "Total.*epoch time\\s+\\(ms\\).*:\\s+($jube_pat_nint)"
+      - name: batch_time
+        type: int
+        _: "batchtime\\(ms\\):\\s+($jube_pat_nint)"
+      - name: average_batch_time
+        type: int
+        _: "Average.*batch time\\s+\\(ms\\).*:\\s+($jube_pat_nint)"
+      - name: read_sample_time
+        type: float
+        _: "read_sample:\\s+($jube_pat_nfp)"
+      - name: loss_compute_time
+        type: float
+        _: "loss_compute:\\s+($jube_pat_nfp)"
+      - name: loss_all_reduce_time
+        type: float
+        _: "loss_all_reduce:\\s+($jube_pat_nfp)"
+      - name: forward_time
+        type: float
+        _: "forward:\\s+($jube_pat_nfp)"
+      - name: backward_time
+        type: float
+        _: "backward:\\s+($jube_pat_nfp)"
+      - name: optimizer_step_time
+        type: float
+        _: "optimizer_step:\\s+($jube_pat_nfp)"
+      - name: train_step_time
+        type: float
+        _: "train_step_total:\\s+($jube_pat_nfp)"
+      - name: loss
+        type: float
+        _: "loss:\\s+($jube_pat_nfp)"
+      - name: learning_rate
+        type: float
+        _: "lr:\\s+($jube_pat_nfp)"
+      - name: memory_usage
+        type: int
+        _: "peak_mem\\(M\\):\\s+($jube_pat_nint)"
+      - name: total_runtime
+        type: float
+        _: "Total runtime\\(s\\):\\s+($jube_pat_nfp)"
+      - name: power_consumption
+        type: int
+        _: ",($jube_pat_nint),"
+      - name: apparent_power
+        type: int
+        _: ",($jube_pat_nint)$"
+      - name: job_id
+        type: int
+        _: "Submitted batch job $jube_pat_int"
+      - name: node_ids
+        type: string
+        _: "SLURM_NODELIST:\\s+($jube_pat_nwrd)"
+
+analyser:
+    name: analyse
+    reduce: false
+    use: perf_patterns
+    analyse:
+        step: submit
+        file:
+          - job.out
+          - stdout
+          - consumption.log
+
+result:
+    use: analyse
+    table:
+      name: result
+      style: pretty
+      sort: iter_pat
+      column:
+        - {title: "job ID", _: job_id}
+        - {title: "system", _: systemname}
+        - {title: "queue", _: queue}
+        - {title: "walltime [HH:MM:SS]", _: timelimit}
+        - {title: "total runtime [s]", _: total_runtime_first}
+        - {title: "# epochs", _: epochs}
+        - {title: "# nodes", _: nodes}
+        - {title: "node IDs", _: node_ids}
+        - {title: "# gpus", _: gpus}
+        - {title: "last epoch ", _: epoch_last}
+        - {title: "first train step time [ms]", _: train_step_time_first}
+        - {title: "last train step time [ms]", _: train_step_time_last}
+        - {title: "avg. train step time [ms]", _: train_step_time_avg}
+        - {title: "std. train step time [ms]", _: train_step_time_std}
+        - {title: "first epoch time [ms]", _: epoch_time_first}
+        - {title: "last epoch time [ms]", _: epoch_time_last}
+        - {title: "avg. epoch time [ms]", _: epoch_time_avg}
+        - {title: "std. epoch time [ms]", _: epoch_time_std}
+        - {title: "first batch time [ms]", _: batch_time_first}
+        - {title: "last batch time [ms]", _: batch_time_last}
+        - {title: "avg. batch time [ms]", _: batch_time_avg}
+        - {title: "std. batch time [ms]", _: batch_time_std}
+        - {title: "first average batch time [ms]", _: average_batch_time_first}
+        - {title: "last average batch time [ms]", _: average_batch_time_last}
+        - {title: "avg. average batch time [ms]", _: average_batch_time_avg}
+        - {title: "std. average batch time [ms]", _: average_batch_time_std}
+        - {title: "first read sample time [ms]", _: read_sample_time_first}
+        - {title: "last read sample time [ms]", _: read_sample_time_last}
+        - {title: "avg. read sample time [ms]", _: read_sample_time_avg}
+        - {title: "std. read sample time [ms]", _: read_sample_time_std}
+        - {title: "first forward time [ms]", _: forward_time_first}
+        - {title: "last forward time [ms]", _: forward_time_last}
+        - {title: "avg. forward time [ms]", _: forward_time_avg}
+        - {title: "std. forward time [ms]", _: forward_time_std}
+        - {title: "first backward time [ms]", _: backward_time_first}
+        - {title: "last backward time [ms]", _: backward_time_last}
+        - {title: "avg. backward time [ms]", _: backward_time_avg}
+        - {title: "std. backward time [ms]", _: backward_time_std}
+        - {title: "first memory usage [MB]", _: memory_usage_first}
+        - {title: "last memory usage [MB]", _: memory_usage_last}
+        - {title: "avg. memory usage [MB]", _: memory_usage_avg}
+        - {title: "max. memory usage [MB]", _: memory_usage_max}
+        - {title: "last loss", _: loss_last}
+        - {title: "min loss", _: loss_min}
+        - {title: "first power consumption [W]", _: power_consumption_first}
+        - {title: "last power consumption [W]", _: power_consumption_last}
+        - {title: "avg. power consumption [W]", _: power_consumption_avg}
+        - {title: "std. power consumption [W]", _: power_consumption_max}
+        - {title: "first apparent power [VA]", _: apparent_power_first}
+        - {title: "last apparent power [VA]", _: apparent_power_last}
+        - {title: "avg. apparent power [VA]", _: apparent_power_avg}
+        - {title: "std. apparent power [VA]", _: apparent_power_max}
+
+step:
+  - name: submit
+    use:
+      - trainingParameters
+      - globalParameters
+      - systemParameter
+      - executeset
+      - from: platform.xml
+        _: jobfiles
+      - from: platform.xml
+        _: executesub
+    do:
+      done_file: $ready_file
+      error_file: $error_file
+      _:
+        $modules;
+        export LENGTHS=$lengths;
+        echo LENGTHS=$$LENGTHS;
+        $submit $memory $submit_script;

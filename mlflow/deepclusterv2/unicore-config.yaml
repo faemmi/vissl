@@ -1,0 +1,14 @@
+UnicoreApiUrl: https://zam2125.zam.kfa-juelich.de:9112/JUWELS/rest/core
+Environment:
+    Singularity:
+      Path: /p/project/deepacf/maelstrom/emmerich1/vissl.sif
+      Type: remote
+Resources:
+  Runtime: 6h
+  Queue: booster
+  Nodes: 4
+  #NodeConstraints: largedata
+Exclude:
+  - "*.sif"
+  - "README.md"
+  - ".checkpoints/"

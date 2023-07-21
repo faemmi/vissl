@@ -1,0 +1,116 @@
+Bootstrap: docker
+From: nvidia/cuda:11.1.1-cudnn8-devel-ubuntu18.04
+Stage: builder
+
+%files 
+    setup.py /opt/vissl
+    requirements.txt /opt/vissl
+    vissl/ /opt/vissl/vissl
+    configs/ /opt/vissl/configs
+
+%post -c /bin/bash
+    export CUDA_VERSION=11.1
+    export PYTHON_VERSION=3.8
+    export PYTORCH_VERSION=1.9.1
+    export TORCHVISION_VERSION=0.10.1
+    export VISSL_VERSION=0.1.6
+    export PATH=/usr/local/cuda-${CUDA_VERSION}/bin:/usr/local/bin:/opt/conda/bin:${PATH}
+
+    # See https://github.com/NVIDIA/nvidia-docker/issues/1631
+    apt-key del 7fa2af80
+    apt-key del 3bf863cc
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+
+    # Install common dependencies
+    # See https://stackoverflow.com/questions/44331836/apt-get-install-tzdata-noninteractive
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive \
+    apt-get install -y --no-install-recommends \
+        ca-certificates \
+        wget
+
+    # Install conda (miniconda)
+    wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
+    chmod +x miniconda.sh
+    bash miniconda.sh -b -p /opt/conda
+
+    . /opt/conda/etc/profile.d/conda.sh
+    conda config --add channels conda-forge
+    conda install conda-pack
+    conda update pip setuptools
+
+    # Create and activate conda environment
+    conda create -n vissl python=${PYTHON_VERSION}
+    conda activate vissl
+    python --version
+
+    # Install PyTorch
+    conda install -c pytorch -c conda-forge \
+        pytorch=${PYTORCH_VERSION} \
+        torchvision=${TORCHVISION_VERSION} \
+        cudatoolkit=${CUDA_VERSION}
+
+    # Install apex
+    # For compatible Python, PyTorch and CUDA versions see
+    # https://anaconda.org/vissl/apex/files
+    conda install -c vissl apex
+
+    # Use conda-pack to create a standalone env in /venv
+    conda-pack -n vissl -o /opt/env.tar.gz
+    conda deactivate
+    mkdir /venv
+    tar -xzf /opt/env.tar.gz -C /venv
+    . /venv/bin/activate
+    conda-unpack
+
+    # Install VISSL dependencies and package
+    cd /opt/vissl
+    pip install --no-cache-dir -e .
+
+    # Install ipykernel to allow usage as Jupyter kernel
+    pip install ipykernel
+
+
+Bootstrap: docker
+From: nvidia/cuda:11.1.1-cudnn8-runtime-ubuntu18.04
+Stage: final
+
+%files from builder
+    /venv /venv
+    /opt/vissl /opt/vissl
+
+%environment
+    export PATH=/usr/local/cuda-11.1/bin:/usr/local/bin:/venv/bin:${PATH}
+
+%post
+    # See https://github.com/NVIDIA/nvidia-docker/issues/1631
+    apt-key del 7fa2af80
+    apt-key del 3bf863cc
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/3bf863cc.pub
+    apt-key adv --fetch-keys https://developer.download.nvidia.com/compute/cuda/repos/ubuntu1804/x86_64/7fa2af80.pub
+
+    apt-get update
+    DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends python3-opencv
+    apt-get clean
+    rm -rf /var/lib/apt/lists/*
+
+%test
+    export PATH=/usr/local/cuda-11.1/bin:/usr/local/bin:/venv/bin:${PATH}
+    which python
+    python --version
+    python -c 'import torch, apex, vissl, cv2'
+
+%runscript
+    echo "[$(date)] Running VISSL"
+    echo "Arguments: $*"
+    echo "Running command"
+    exec "$@"
+
+%labels
+    Author Fabian Emmerich
+    Version v1.6.0-cu11.1-py3.8
+
+%help
+    Provides the VISSL library and all required dependencies.
+    The git repository is located at `/opt/vissl` and installed in editable mode.

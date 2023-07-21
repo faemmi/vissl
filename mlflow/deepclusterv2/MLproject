@@ -1,0 +1,13 @@
+name: a6-vissl
+
+entry_points:
+  main:
+    parameters:
+      config:
+        type: string
+        default: remote
+      options:
+        type: string
+        default: ""
+    command:
+      python /opt/vissl/tools/run_distributed_engines.py config={config} {options}
