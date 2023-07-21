@@ -22,6 +22,10 @@ def test_plot_embedding(tmp_path):
         [1, 2],
     )
 
+    centroids = torch.Tensor(
+        [0],
+    )
+
     expected = [
         tmp_path / "test-crops-0.pdf",
         tmp_path / "test-crops-1.pdf",
@@ -29,7 +33,9 @@ def test_plot_embedding(tmp_path):
 
     _embeddings.plot_embeddings_using_tsne(
         embeddings=embeddings,
+        j=0,
         assignments=assignments,
+        centroids=centroids,
         name="test",
         output_dir=tmp_path.as_posix(),
     )

@@ -213,23 +213,37 @@ class DeepClusterV2Loss(ClassyLoss):
 
     def cluster_memory(self):
         self.start_idx = 0
+
+        # j defines which crops are used for the K-means run.
+        # E.g. if the number of crops (``self.nmb_mbs``) is 2, and
+        # ``self.num_clusters = [30, 30, 30, 30]``, the crops will
+        # be used as following:
+        #
+        # 1. K=30, j=0
+        # 2. K=30, j=1
+        # 3. K=30, j=0
+        # 4. K=30, j=1
         j = 0
         with torch.no_grad():
             for i_K, K in enumerate(self.num_clusters):
                 # run distributed k-means
 
-                # init centroids with elements from memory bank of rank 0
                 centroids = torch.empty(K, self.embedding_dim).to(
                     device=self.device, non_blocking=True
                 )
                 if get_rank() == 0:
+                    # Init centroids with elements from memory bank of rank 0 by
+                    # taking K random samples from its local memory embeddings (i.e. the cropped
+                    # samples) as centroids
                     random_idx = torch.randperm(len(self.local_memory_embeddings[j]))[
                         :K
                     ]
 
                     assert len(random_idx) >= K, "please reduce the number of centroids"
                     centroids = self.local_memory_embeddings[j][random_idx]
-                dist.broadcast(centroids, 0)
+
+                # Send random centroids from rank 0 to all processes
+                dist.broadcast(centroids, src=0)
 
                 for n_iter in range(self.nmb_kmeans_iters + 1):
                     # E step
@@ -269,7 +283,7 @@ class DeepClusterV2Loss(ClassyLoss):
 
                 getattr(self, "centroids" + str(i_K)).copy_(centroids)
 
-                # gather the assignments
+                # Gather results from all ranks
                 assignments_all = gather_from_all(assignments)
                 # To gather embeddings, make sure to gather using ``self.local_memory_embeddings[j]``
                 embeddings_all = gather_from_all(self.local_memory_embeddings[j])
@@ -297,11 +311,11 @@ class DeepClusterV2Loss(ClassyLoss):
                 self.indexes[i_K][indexes_all] = indexes_all
                 self.distance[i_K] = -1.0
                 self.distance[i_K][indexes_all] = distance_all
+                # For the embeddings, make sure to use j for indexing
+                self.embeddings[i_K][j] = -1.0
+                self.embeddings[i_K][j][indexes_all] = embeddings_all
 
-                for i in range(self.nmb_mbs):
-                    self.embeddings[i_K][i] = -1.0
-                    self.embeddings[i_K][i][indexes_all] = embeddings_all[i]
-
+                j_prev = j
                 j = (j + 1) % self.nmb_mbs
 
             epoch = mantik.get_current_epoch()
@@ -334,9 +348,17 @@ class DeepClusterV2Loss(ClassyLoss):
                 )
 
                 if get_rank() == 0:
+                    # Save which random samples were used as the centroids. 
+                    torch.save(
+                        random_idx, self._create_path("centroid-indexes.pt", epoch=epoch)
+                    )
                     plotting.deepclusterv2.embeddings.plot_embeddings_using_tsne(
                         embeddings=self.embeddings[-1],
+                        # Use previous j since this represents which crops
+                        # were used for last cluster iteration.
+                        j=j_prev,
                         assignments=self.assignments[-1],
+                        centroids=random_idx,
                         name=f"epoch-{epoch}-embeddings",
                         output_dir=self.plots_dir,
                     )
