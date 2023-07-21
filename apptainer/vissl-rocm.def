@@ -7,7 +7,6 @@ Stage: builder
     export PYTHON_VERSION=3.8
     export PYTORCH_VERSION=1.13.1
     export TORCHVISION_VERSION=0.14.1
-    export VISSL_VERSION=0.1.6
     export PATH=/usr/local/bin:/opt/conda/bin:${PATH}
 
     # Install common dependencies
@@ -17,16 +16,10 @@ Stage: builder
     apt-get install -y --no-install-recommends \
       python3.8 \
       python3.8-venv \
-      python3.8-dev \
-      git
+      python3.8-dev
 
     # Install VISSL
-    # Clone VISSL repository
-    git clone --recursive https://github.com/faemmi/vissl.git /opt/vissl
     cd /opt/vissl
-    git checkout v${VISSL_VERSION}
-    git checkout -b v${VISSL_VERSION}
-
     python3.8 -m venv /venv
     . /venv/bin/activate
     pip install --upgrade pip

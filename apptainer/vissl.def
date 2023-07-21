@@ -2,18 +2,18 @@ Bootstrap: docker
 From: nvidia/cuda:11.1.1-cudnn8-devel-ubuntu18.04
 Stage: builder
 
-%files 
-    setup.py /opt/vissl
-    requirements.txt /opt/vissl
-    vissl/ /opt/vissl/vissl
-    configs/ /opt/vissl/configs
+%files
+    setup.py /opt/vissl/
+    requirements.txt /opt/vissl/
+    requirements-dev.txt /opt/vissl/
+    vissl/ /opt/vissl
+    configs/ /opt/vissl
 
 %post -c /bin/bash
     export CUDA_VERSION=11.1
     export PYTHON_VERSION=3.8
     export PYTORCH_VERSION=1.9.1
     export TORCHVISION_VERSION=0.10.1
-    export VISSL_VERSION=0.1.6
     export PATH=/usr/local/cuda-${CUDA_VERSION}/bin:/usr/local/bin:/opt/conda/bin:${PATH}
 
     # See https://github.com/NVIDIA/nvidia-docker/issues/1631
@@ -71,6 +71,8 @@ Stage: builder
     # Install ipykernel to allow usage as Jupyter kernel
     pip install ipykernel
 
+    pip list
+
 
 Bootstrap: docker
 From: nvidia/cuda:11.1.1-cudnn8-runtime-ubuntu18.04
@@ -99,6 +101,7 @@ Stage: final
     export PATH=/usr/local/cuda-11.1/bin:/usr/local/bin:/venv/bin:${PATH}
     which python
     python --version
+    pip list
     python -c 'import torch, apex, vissl, cv2'
 
 %runscript

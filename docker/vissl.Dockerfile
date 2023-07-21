@@ -11,7 +11,11 @@ ARG PYTORCH_VERSION=1.9.1
 ARG TORCHVISION_VERSION=0.10.1
 ARG VISSL_VERSION=0.1.6
 
-COPY setup.py requirements.txt vissl/ configs/ /opt/vissl
+COPY setup.py /opt/vissl/
+COPY requirements.txt /opt/vissl/
+COPY requirements-dev.txt /opt/vissl/
+COPY vissl/ /opt/vissl/vissl
+COPY configs/ /opt/vissl/configs
 
 SHELL ["/bin/bash", "-c"]
 
@@ -93,6 +97,7 @@ RUN apt-get update \
 
 RUN which python \
  && python --version \
+ && pip list \
  && python -c 'import torch, apex, vissl, cv2'
 
 ENTRYPOINT ["python"]

@@ -47,9 +47,6 @@ train-apptainer:
 		config.LOSS.deepclusterv2_loss.output_dir=$(OUTPUT_DIR) \
 		config.TRACK_TO_MANTIK=False
 
-.PHONY: install install-cpu test train
-
-
 build-docker:
 	sudo docker build -t $(VISSL_IMAGE_NAME):latest -f docker/vissl.Dockerfile .
 
@@ -57,28 +54,28 @@ build-docker-rocm:
 	sudo docker build -t $(VISSL_IMAGE_NAME):latest-rocm -f docker/vissl.Dockerfile .
 
 build-apptainer:
-	sudo apptainer build --force mantik/$(VISSL_IMAGE_NAME).sif apptainer/vissl.def
+	sudo apptainer build --force apptainer/$(VISSL_IMAGE_NAME).sif apptainer/vissl.def
 
 build-apptainer-rocm:
-	sudo apptainer build --force mantik/$(VISSL_IMAGE_NAME)-rocm.sif apptainer/vissl-rocm.def
+	sudo apptainer build --force apptainer/$(VISSL_IMAGE_NAME)-rocm.sif apptainer/vissl-rocm.def
 
 upload:
 	$(SSH_COPY_COMMAND) $(JSC_SSH_OPTIONS) \
-		mlflow/deepclusterv2/$(VISSL_IMAGE_NAME).sif \
+		apptainer/$(VISSL_IMAGE_NAME).sif \
 		$(JSC_SSH):$(JSC_PROJECT_DIR)/$(VISSL_IMAGE_NAME).sif
 
 upload-e4:
 	$(SSH_COPY_COMMAND) $(E4_SSH_OPTIONS) \
-		mlflow/deepclusterv2/$(VISSL_IMAGE_NAME).sif \
+		apptainer/$(VISSL_IMAGE_NAME).sif \
 		$(E4_SSH):$(E4_PROJECT_DIR)/$(VISSL_IMAGE_NAME).sif
 
 upload-rocm-e4:
 	$(SSH_COPY_COMMAND) $(E4_SSH_OPTIONS) \
-		mlflow/deepclusterv2/$(VISSL_IMAGE_NAME)-rocm.sif \
+		apptainer/$(VISSL_IMAGE_NAME)-rocm.sif \
 		$(E4_SSH):$(E4_PROJECT_DIR)/$(VISSL_IMAGE_NAME)-rocm.sif
 
-deploy-vissl: build-vissl upload-vissl
+deploy: build-apptainer upload
 
-deploy-vissl-e4: build-vissl upload-vissl-e4
+deploy-e4: build-apptainer upload-e4
 
-deploy-vissl-rocm-e4: build-vissl-rocm upload-vissl-rocm-e4
+deploy-rocm-e4: build-apptainer-rocm upload-rocm-e4
