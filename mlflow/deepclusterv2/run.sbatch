@@ -21,7 +21,7 @@ else
 fi
 
 if [ -z "$CPUS" ]; then
-    echo "Using ${SLURM_GPUS_PER_NODE} GPUs per node";
+    echo "Using ${SLURM_GPUS_PER_NODE:-$SLURM_GPUS_PER_NODE} GPUs per node";
 else
     echo "Using ${CPUS} CPUs per node"
     CPU_CONFIG_ARGS='
@@ -64,7 +64,7 @@ fi
 echo "Submitting VISSL"
 echo "NODES=${SLURM_NNODES}"
 echo "N_CPUS=${SLURM_CPUS_ON_NODE}"
-echo "GPUS=${SLURM_GPUS_ON_NODE}"
+echo "GPUS=${SLURM_GPUS_PER_NODE:-$SLURM_GPUS_ON_NODE}"
 echo "EPOCHS=${EPOCHS}"
 echo "LENGTHS=${LENGTHS}"
 echo "RUN_ID=${RUN_ID}"
@@ -103,7 +103,7 @@ srun apptainer run \
   config=remote ${CPU_CONFIG_ARGS} \
   config.TRACK_TO_MANTIK=${TRACK_TO_MANTIK} \
   config.DISTRIBUTED.NUM_NODES=${SLURM_NNODES} \
-  config.DISTRIBUTED.NUM_PROC_PER_NODE=${CPUS:-$SLURM_GPUS_ON_NODE} \
+  config.DISTRIBUTED.NUM_PROC_PER_NODE=${CPUS:-${SLURM_GPUS_PER_NODE:-$SLURM_GPUS_ON_NODE}} \
   config.DISTRIBUTED.RUN_ID=${RUN_ID} \
   config.CHECKPOINT.DIR=${CHECKPOINTS_DIR} \
   config.DATA.TRAIN.COPY_DESTINATION_DIR=${TMP_DATA_DIR} \
