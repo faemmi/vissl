@@ -12,7 +12,6 @@ import logging
 import time
 from typing import Optional
 
-import mlflow
 import numpy as np
 import torch
 from classy_vision import tasks
@@ -20,6 +19,7 @@ from classy_vision.generic.distributed_util import get_rank, is_primary
 from classy_vision.hooks.classy_hook import ClassyHook
 from fairscale.nn.data_parallel import FullyShardedDataParallel as FSDP
 from iopath.common.file_io import g_pathmgr
+import mlflow
 import vissl.utils.mantik as mantik
 from vissl.utils.checkpoint import CheckpointWriter, is_checkpoint_phase
 from vissl.utils.env import get_machine_local_and_dist_rank

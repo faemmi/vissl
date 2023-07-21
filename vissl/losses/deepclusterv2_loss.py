@@ -8,7 +8,6 @@ import math
 import pprint
 from typing import Union
 
-import mlflow
 import torch
 import torch.distributed as dist
 from classy_vision.generic.distributed_util import (
@@ -19,6 +18,7 @@ from classy_vision.generic.distributed_util import (
 )
 from classy_vision.losses import ClassyLoss, register_loss
 from torch import nn
+import mlflow
 import vissl.plotting as plotting
 import vissl.utils.io as io
 import vissl.utils.mantik as mantik
@@ -348,9 +348,10 @@ class DeepClusterV2Loss(ClassyLoss):
                 )
 
                 if get_rank() == 0:
-                    # Save which random samples were used as the centroids. 
+                    # Save which random samples were used as the centroids.
                     torch.save(
-                        random_idx, self._create_path("centroid-indexes.pt", epoch=epoch)
+                        random_idx,
+                        self._create_path("centroid-indexes.pt", epoch=epoch),
                     )
                     plotting.deepclusterv2.embeddings.plot_embeddings_using_tsne(
                         embeddings=self.embeddings[-1],

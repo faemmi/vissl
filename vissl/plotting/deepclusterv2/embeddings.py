@@ -10,7 +10,12 @@ import vissl.plotting.deepclusterv2._colors as _colors
 
 
 def plot_embeddings_using_tsne(
-    embeddings: torch.Tensor, j: int, assignments: torch.Tensor, centroids: torch.Tensor, name: str, output_dir: str
+    embeddings: torch.Tensor,
+    j: int,
+    assignments: torch.Tensor,
+    centroids: torch.Tensor,
+    name: str,
+    output_dir: str,
 ) -> None:
     """Plot the embeddings of DCv2 using t-SNE.
 
@@ -33,7 +38,9 @@ def plot_embeddings_using_tsne(
 
     ax.set_title(f"Embeddings for crops {j}")
 
-    (x, y), (x_centroids, y_centroids) = _fit_tsne(embeddings=embeddings[j], centroids=centroids)
+    (x, y), (x_centroids, y_centroids) = _fit_tsne(
+        embeddings=embeddings[j], centroids=centroids
+    )
     colors = _colors.create_colors_for_assigments(assignments)
 
     ax.scatter(x, y, c=colors, s=1)
@@ -44,7 +51,9 @@ def plot_embeddings_using_tsne(
     logging.info("Finished embeddings plot in %s seconds", time.time() - start)
 
 
-def _fit_tsne(embeddings: torch.Tensor, centroids: torch.Tensor) -> Iterator[Tuple[Tuple[Tuple[float, float]], Tuple[float, float]]]:
+def _fit_tsne(
+    embeddings: torch.Tensor, centroids: torch.Tensor
+) -> Iterator[Tuple[Tuple[float, float], Tuple[float, float]]]:
     start = time.time()
     logging.info("Fitting t-SNE")
 

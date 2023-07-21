@@ -15,7 +15,7 @@ TRACK_TO_MANTIK=${TRACK_TO_MANTIK:-True}
 if [ "$DATASET" = "hourly" ]; then
     DATASET="[remote_dataset_jsc_hourly]"
     N_SAMPLES="35064";
-else 
+else
     DATASET="[remote_dataset_jsc_daily]"
     N_SAMPLES="1461";
 fi

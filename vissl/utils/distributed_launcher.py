@@ -14,11 +14,11 @@ import tempfile
 import time
 from typing import Any, Callable, List
 
-import mlflow
 import torch
 import torch.multiprocessing
 from classy_vision.generic.distributed_util import get_rank, is_primary
 from iopath.common.file_io import g_pathmgr
+import mlflow
 import vissl.utils.logger as _logger
 import vissl.utils.mantik as mantik
 from vissl.config import AttrDict

@@ -8,11 +8,11 @@ import os
 import pathlib
 import time
 
-import mlflow
 from classy_vision.generic.distributed_util import get_rank
 from fvcore.common.file_io import PathManager
 from PIL import Image
 from torchvision.datasets import ImageFolder
+import mlflow
 import vissl.utils.io as io
 import vissl.utils.mantik as mantik
 from vissl.data.data_helper import QueueDataset, get_mean_image

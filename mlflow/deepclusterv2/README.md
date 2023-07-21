@@ -69,7 +69,7 @@ sbatch -A <account> --partition <partition> --nodes=${NODES} --gpus-per-node=${G
 Running with `sbatch` will create a folder at `/p/scratch/<account>/maelstrom/<user>/deepcluster/<SLURM job ID>`,
 where the model checkpoints will be saved.
 
-**Notes:** 
+**Notes:**
 
 * When using the different sized datasets, one can use the following resources:
   * Daily samples: 1461 samples with a batch size of 64 fit into 4 nodes with 4 GPUs.
