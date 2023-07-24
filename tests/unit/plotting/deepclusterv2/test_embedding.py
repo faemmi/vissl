@@ -23,13 +23,10 @@ def test_plot_embedding(tmp_path):
     )
 
     centroids = torch.Tensor(
-        [0],
-    )
+        [0, 1],
+    ).int()
 
-    expected = [
-        tmp_path / "test-crops-0.pdf",
-        tmp_path / "test-crops-1.pdf",
-    ]
+    expected = tmp_path / "test-crops-0.pdf"
 
     _embeddings.plot_embeddings_using_tsne(
         embeddings=embeddings,
@@ -40,4 +37,4 @@ def test_plot_embedding(tmp_path):
         output_dir=tmp_path.as_posix(),
     )
 
-    assert all(plot.exists() for plot in expected)
+    assert expected.exists()
