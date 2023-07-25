@@ -11,17 +11,17 @@ jobs:
         python-version: ["3.8"]
     steps:
       - uses: actions/checkout@v3
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
       - name: Install Poetry
         uses: snok/install-poetry@v1
         with:
           version: 1.5.1
           virtualenvs-create: false
           installer-parallel: true
-      - name: Set up Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v4
-        with:
-          python-version: ${{ matrix.python-version }}
-          cache: 'pip'
       - uses: syphar/restore-virtualenv@v1
         id: cache-virtualenv
       - name: Install dependencies
