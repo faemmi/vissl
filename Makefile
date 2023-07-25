@@ -13,22 +13,22 @@ VISSL_IMAGE_NAME = vissl
 SSH_COPY_COMMAND = rsync -Pvra --progress
 
 install:
-	pip install -e .
+	poetry install
 
 install-cpu: install
-	pip install -r requirements-cpu.txt
+	poetry install --with cpu
 
 install-dev:
-	pip install -e ".[dev]"
+	poetry install --with dev
 
 test:
-	pytest tests/unit
+	poetry run pytest tests/unit
 
 train:
 	@rm -rf $(OUTPUT_DIR)
 	@mkdir -p $(OUTPUT_DIR)
 
-	python tools/run_distributed_engines.py \
+	poetry run python tools/run_distributed_engines.py \
 		config=local \
 		config.OPTIMIZER.num_epochs=1 \
 		config.VERBOSE=True \

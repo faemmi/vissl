@@ -1,0 +1,80 @@
+[tool.poetry]
+name = "vissl"
+version = "0.1.6"
+description = "VISSL is an extensible, modular and scalable library for SOTA Self-Supervised Learning with images"
+homepage = "https://github.com/facebookresearch/vissl"
+authors = ["Facebook AI Research <vissl@fb.com>"]
+packages = [
+    { include = "vissl" },
+    { include = "configs" },
+    { include = "extra_scripts" },
+    { include = "hydra_plugins" },
+]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = ">=3.8,<3.10"
+# Use stable version for classy_vision
+classy-vision = "0.7.0"
+cython = "0.29.22"
+# Use stable fairscale version 0.4.6
+fairscale = "0.4.6"
+fvcore = "0.1.3.post20210317"
+# Due to
+# AttributeError: module 'importlib_resources' has no attribute 'is_resource'
+# importlib_resources MUST stay pinned to 5.12.0
+importlib-resources = "5.12.0"
+iopath = "0.1.9"
+hydra-core = "1.0.7"
+mantik = "0.3.1"
+matplotlib = "3.6.3"
+# Use numpy 1.21.2 to fix ModuleNotFoundError: No module named 'numpy.core._multiarray_umath'
+numpy = "1.21.2"
+opencv-python = "4.7.0.72"
+opentsne = "1.0.0"
+parameterized = "0.7.4"
+scikit-learn = "0.24.1"
+# Has to be pinned due to error in torchvision,
+# see https://github.com/pytorch/pytorch/issues/69894
+setuptools = "59.5.0"
+submitit = "1.3.3"
+tabulate = "0.8.9"
+tensorboard = "2.12.1"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.0"
+pytest-cov = "^4.1.0"
+sphinx = "6.1.3"
+pre-commit = "3.3.3"
+nbconvert = "7.3.0"
+bs4 = "0.0.1"
+faiss-gpu = "1.7.2"
+pycocotools = "2.0.6"
+
+[tool.poetry.group.cpu.dependencies]
+torch = {version = "1.10.1", source = "pytorch-cpu"}
+torchvision = {version = "0.11.2", source = "pytorch-cpu"}
+
+[[tool.poetry.source]]
+name = "pytorch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.isort]
+combine_as_imports = true
+force_grid_wrap = false
+default_section = "THIRDPARTY"
+include_trailing_comma = true
+line_length = 88
+multi_line_output = 3
+use_parentheses = true
+lines_after_imports = 2
+ensure_newline_before_comments = true
+no_lines_before = "FIRSTPARTY"
+skip_glob = "build/*,third-party/*,.github/*"
+known_third_party = "extra_scripts"
