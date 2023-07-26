@@ -78,6 +78,8 @@ jobs:
           ls -al configs/config
       - name: Run training
         run: |
+          export OUTPUT_DIR=${PWD}/results
+          export MLFLOW_TRACKING_URI=file:${OUTPUT_DIR}/mlruns
           python tools/run_distributed_engines.py \
             config=local \
             config.DATA.TRAIN.DATASET_NAMES='["ci_test_dataset"]' \
@@ -86,12 +88,12 @@ jobs:
             config.LOSS.deepclusterv2_loss.num_train_samples=1 \
             config.LOSS.deepclusterv2_loss.num_clusters='[1,1,1]' \
             config.LOSS.deepclusterv2_loss.kmeans_iters=2 \
-            config.LOSS.deepclusterv2_loss.output_dir=$PWD/results \
-            config.HOOKS.TENSORBOARD_SETUP.LOG_DIR=$PWD/results \
-            config.CHECKPOINT.DIR=$PWD/results \
+            config.LOSS.deepclusterv2_loss.output_dir=${OUTPUT_DIR} \
+            config.HOOKS.TENSORBOARD_SETUP.LOG_DIR=${OUTPUT_DIR} \
+            config.CHECKPOINT.DIR=${OUTPUT_DIR} \
             config.VERBOSE=True \
-            config.TRACK_TO_MANTIK=False
+            config.TRACK_TO_MANTIK=True
       - name: List created files
         run: |
-          ls -alR results
+          ls -alR ${OUTPUT_DIR}
 

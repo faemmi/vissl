@@ -1,5 +1,5 @@
 ROOT_DIR = $(PWD)
-OUTPUT_DIR = $(HOME)/data/deepclusterv2
+OUTPUT_DIR = $(ROOT_DIR)/results
 
 JSC_USER = $(MANTIK_UNICORE_USERNAME)
 JSC_SSH = $(JSC_USER)@judac.fz-juelich.de
@@ -25,14 +25,18 @@ train:
 	@rm -rf $(OUTPUT_DIR)
 	@mkdir -p $(OUTPUT_DIR)
 
+	MLFLOW_TRACKING_URI=file:$(OUTPUT_DIR)/mlruns \
 	poetry run python tools/run_distributed_engines.py \
 		config=local \
 		config.OPTIMIZER.num_epochs=1 \
 		config.VERBOSE=True \
 		config.LOSS.deepclusterv2_loss.output_dir=$(OUTPUT_DIR) \
-		config.TRACK_TO_MANTIK=False
+        config.HOOKS.TENSORBOARD_SETUP.LOG_DIR=${OUTPUT_DIR} \
+        config.CHECKPOINT.DIR=${OUTPUT_DIR} \
+		config.TRACK_TO_MANTIK=True
 
 train-apptainer:
+	MLFLOW_TRACKING_URI=file:$(OUTPUT_DIR)/mlruns \
 	apptainer run \
 	    -B $PWD/configs:/opt/vissl/configs \
 	    -B $PWD/tests/test_data/deepclusterv2:/data \
@@ -42,7 +46,9 @@ train-apptainer:
 		config.OPTIMIZER.num_epochs=1 \
 		config.VERBOSE=True \
 		config.LOSS.deepclusterv2_loss.output_dir=$(OUTPUT_DIR) \
-		config.TRACK_TO_MANTIK=False
+        config.HOOKS.TENSORBOARD_SETUP.LOG_DIR=${OUTPUT_DIR} \
+        config.CHECKPOINT.DIR=${OUTPUT_DIR} \
+		config.TRACK_TO_MANTIK=True
 
 build-docker:
 	sudo docker build -t $(VISSL_IMAGE_NAME):latest -f docker/vissl.Dockerfile .
