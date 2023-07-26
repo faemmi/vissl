@@ -16,10 +16,7 @@ install:
 	poetry install
 
 install-cpu: install
-	poetry install --with cpu
-
-install-dev:
-	poetry install --with dev
+	poetry run pip install -r requirements-cpu.txt
 
 test:
 	poetry run pytest tests/unit
@@ -51,7 +48,7 @@ build-docker:
 	sudo docker build -t $(VISSL_IMAGE_NAME):latest -f docker/vissl.Dockerfile .
 
 build-docker-rocm:
-	sudo docker build -t $(VISSL_IMAGE_NAME):latest-rocm -f docker/vissl.Dockerfile .
+	sudo docker build -t $(VISSL_IMAGE_NAME):latest-rocm -f docker/vissl-rocm.Dockerfile .
 
 build-apptainer:
 	sudo apptainer build --force apptainer/$(VISSL_IMAGE_NAME).sif apptainer/vissl.def
