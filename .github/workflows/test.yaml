@@ -73,9 +73,6 @@ jobs:
           cache: 'pip'
       - uses: syphar/restore-virtualenv@v1
         id: cache-virtualenv
-      - name: List configs
-        run: |
-          ls -al configs/config
       - name: Run training
         run: |
           export OUTPUT_DIR=${PWD}/results
@@ -95,5 +92,8 @@ jobs:
             config.TRACK_TO_MANTIK=True
       - name: List created files
         run: |
-          ls -alR ${OUTPUT_DIR}
+          ls -alR ${PWD}/results
+      - name: List tracked MLflow data
+        run: |
+          ls -alR ${PWD}/mlruns
 
