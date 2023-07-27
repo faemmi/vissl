@@ -2,5 +2,6 @@
 # Use torch 1.10.1 and torchvision 0.11.2 to avoid classy_vision 0.7.0
 # incompatibility with torchvision 0.10.1 due to
 # ImportError: cannot import name 'Kinetics' from 'torchvision.datasets.kinetics'
-torch==1.10.1
-torchvision==0.11.2
+torch==1.9.1
+torchvision==0.10.1
+classy-vision @ https://github.com/facebookresearch/ClassyVision/tarball/4785d5ee19d3bcedd5b28c1eb51ea1f59188b54d
