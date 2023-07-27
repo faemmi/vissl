@@ -1,5 +1,6 @@
 ROOT_DIR = $(PWD)
 OUTPUT_DIR = $(ROOT_DIR)/results
+MLFLOW_TRACKING_URI = file:$(ROOT_DIR)/mlruns
 
 JSC_USER = $(MANTIK_UNICORE_USERNAME)
 JSC_SSH = $(JSC_USER)@judac.fz-juelich.de
@@ -25,7 +26,7 @@ train:
 	@rm -rf $(OUTPUT_DIR)
 	@mkdir -p $(OUTPUT_DIR)
 
-	MLFLOW_TRACKING_URI=file:$(OUTPUT_DIR)/mlruns \
+	MLFLOW_TRACKING_URI=$(MLFLOW_TRACKING_URI) \
 	poetry run python tools/run_distributed_engines.py \
 		config=local \
 		config.OPTIMIZER.num_epochs=1 \
@@ -36,7 +37,7 @@ train:
 		config.TRACK_TO_MANTIK=True
 
 train-apptainer:
-	MLFLOW_TRACKING_URI=file:$(OUTPUT_DIR)/mlruns \
+	MLFLOW_TRACKING_URI=$(MLFLOW_TRACKING_URI) \
 	apptainer run \
 	    -B $PWD/configs:/opt/vissl/configs \
 	    -B $PWD/tests/test_data/deepclusterv2:/data \
