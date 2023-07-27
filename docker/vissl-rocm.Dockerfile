@@ -1,6 +1,5 @@
 # This image is just for testing the installation.
 # It builds much faster than the Apptainer image due to caching.
-
 ARG ROCM_VERSION=5.2
 
 FROM rocm/dev-ubuntu-20.04:${ROCM_VERSION}-complete as builder
@@ -9,14 +8,14 @@ ARG ROCM_VERSION
 ARG PYTHON_VERSION=3.8
 ARG PYTORCH_VERSION=1.13.1
 ARG TORCHVISION_VERSION=0.14.1
-ARG VISSL_VERSION=0.1.6
 
-COPY setup.py /opt/vissl/
-COPY requirements.txt /opt/vissl/
-COPY requirements-dev.txt /opt/vissl/
-COPY requirements-cpu.txt /opt/vissl/
+COPY README.md/ /opt/vissl/
+COPY pyproject.toml /opt/vissl/
+COPY poetry.lock /opt/vissl/
 COPY vissl/ /opt/vissl/vissl
 COPY configs/ /opt/vissl/configs
+COPY hydra_plugins/ /opt/vissl/hydra_plugins
+COPY extra_scripts/ /opt/vissl/extra_scripts
 
 SHELL ["/bin/bash", "-c"]
 
@@ -25,21 +24,34 @@ ENV PATH=/usr/local/bin:/opt/conda/bin:${PATH}
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
+ENV POETRY_VIRTUALENVS_CREATE=false
+
+COPY --from=vissl /venv /venv
+COPY --from=vissl /opt/vissl /opt/vissl
 
 RUN apt-get update \
  && DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
       python${PYTHON_VERSION} \
       python${PYTHON_VERSION}-venv \
-      python${PYTHON_VERSION}-dev
+      python${PYTHON_VERSION}-dev \
+      curl
 
-# Install VISSL dependencies and VISSL in dev mode
+# Install poetry
+RUN curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python${PYTHON_VERSION} -
+ENV PATH=/opt/poetry/bin:${PATH}
+
 WORKDIR /opt/vissl
 RUN python${PYTHON_VERSION} -m venv /venv \
  && . /venv/bin/activate \
  && pip install --upgrade pip \
- && pip install torch==${PYTORCH_VERSION} torchvision==${TORCHVISION_VERSION} --extra-index-url https://download.pytorch.org/whl/rocm${ROCM_VERSION} \
- && pip install --no-cache-dir -e .
+ && poetry install --only=main,jupyter \
+ # Install torch after vissl to overwrite package dependencies
+ && pip install torch==${PYTORCH_VERSION} torchvision==${TORCHVISION_VERSION} --extra-index-url https://download.pytorch.org/whl/rocm${ROCM_VERSION}
+
+# Delete Python cache files
+WORKDIR /venv
+RUN find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
 
 FROM rocm/dev-ubuntu-20.04:${ROCM_VERSION}
 

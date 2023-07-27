@@ -21,12 +21,17 @@ Stage: builder
     DEBIAN_FRONTEND=noninteractive \
     apt-get install -y --no-install-recommends \
         ca-certificates \
-        wget
+        wget \
+        curl
 
     # Install conda (miniconda)
     wget --quiet https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh
     chmod +x miniconda.sh
     bash miniconda.sh -b -p /opt/conda
+
+    # Install poetry
+    curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python -
+    export PATH=/opt/poetry/bin:${PATH}
 
     . /opt/conda/etc/profile.d/conda.sh
     conda config --add channels conda-forge
@@ -57,9 +62,19 @@ Stage: builder
     . /venv/bin/activate
     conda-unpack
 
-    # Install VISSL
+    # Install vissl
+    # Must install vissl after unpacking since conda doesn't allow to pack
+    # packages installed in editable mode
     cd /opt/vissl
-    pip install --no-cache-dir -e .
+    POETRY_VIRTUALENVS_CREATE=false poetry install --only=main,jupyter
+    # Use specific classy_vision version due to incompatibility with torchvision 0.10.1 due to
+    # ImportError: cannot import name 'Kinetics' from 'torchvision.datasets.kinetics'
+    pip uninstall -y classy_vision
+    pip install classy-vision@https://github.com/facebookresearch/ClassyVision/tarball/4785d5ee19d3bcedd5b28c1eb51ea1f59188b54d
+
+    # Delete Python cache files
+    cd /venv
+    find . | grep -E "(__pycache__|\.pyc|\.pyo$)" | xargs rm -rf
 
 
 Bootstrap: docker
