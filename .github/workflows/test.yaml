@@ -78,16 +78,16 @@ jobs:
           ls -al configs/config
       - name: Run training
         run: |
-          OUTPUT_DIR=${PWD}/results \
-          MLFLOW_TRACKING_URI=file:${PWD}/mlruns \
+          export OUTPUT_DIR=${PWD}/results
+          export MLFLOW_TRACKING_URI=file:${PWD}/mlruns
           python tools/run_distributed_engines.py \
             config=local \
             config.DATA.TRAIN.DATASET_NAMES='["ci_test_dataset"]' \
-            config.DATA.TRAIN.BATCHSIZE_PER_REPLICA=1 \
+            config.DATA.TRAIN.BATCHSIZE_PER_REPLICA=2 \
             config.OPTIMIZER.num_epochs=1 \
-            config.LOSS.deepclusterv2_loss.num_train_samples=1 \
-            config.LOSS.deepclusterv2_loss.num_clusters='[1,1,1]' \
-            config.LOSS.deepclusterv2_loss.kmeans_iters=2 \
+            config.LOSS.deepclusterv2_loss.num_train_samples=2 \
+            config.LOSS.deepclusterv2_loss.num_clusters='[2]' \
+            config.LOSS.deepclusterv2_loss.kmeans_iters=1 \
             config.LOSS.deepclusterv2_loss.output_dir=${OUTPUT_DIR} \
             config.HOOKS.TENSORBOARD_SETUP.LOG_DIR=${OUTPUT_DIR} \
             config.CHECKPOINT.DIR=${OUTPUT_DIR} \
