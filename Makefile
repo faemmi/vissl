@@ -32,8 +32,8 @@ train:
 		config.OPTIMIZER.num_epochs=1 \
 		config.VERBOSE=True \
 		config.LOSS.deepclusterv2_loss.output_dir=$(OUTPUT_DIR) \
-        config.HOOKS.TENSORBOARD_SETUP.LOG_DIR=${OUTPUT_DIR} \
-        config.CHECKPOINT.DIR=${OUTPUT_DIR} \
+        config.HOOKS.TENSORBOARD_SETUP.LOG_DIR=$(OUTPUT_DIR) \
+        config.CHECKPOINT.DIR=$(OUTPUT_DIR) \
 		config.TRACK_TO_MANTIK=True
 
 train-apptainer:
@@ -47,8 +47,8 @@ train-apptainer:
 		config.OPTIMIZER.num_epochs=1 \
 		config.VERBOSE=True \
 		config.LOSS.deepclusterv2_loss.output_dir=$(OUTPUT_DIR) \
-        config.HOOKS.TENSORBOARD_SETUP.LOG_DIR=${OUTPUT_DIR} \
-        config.CHECKPOINT.DIR=${OUTPUT_DIR} \
+        config.HOOKS.TENSORBOARD_SETUP.LOG_DIR=$(OUTPUT_DIR) \
+        config.CHECKPOINT.DIR=$(OUTPUT_DIR) \
 		config.TRACK_TO_MANTIK=True
 
 build-docker:
